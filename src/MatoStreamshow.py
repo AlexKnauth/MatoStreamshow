@@ -1,6 +1,7 @@
 import config
 import discord
 from discord import app_commands
+import save
 
 class MatoStreamshow(discord.Client):
     def __init__(self, *, intents: discord.Intents) -> None:
@@ -29,6 +30,8 @@ async def ping(interaction: discord.Interaction):
     interaction : discord.Interaction
         The interaction object.
     """
+    if interaction.guild is None: return
+    save.get_guild_data(interaction.guild)
     await interaction.response.send_message("Pong!")
 
 def main():
