@@ -5,7 +5,8 @@ JSON_PATH = "save.json"
 FULL_TEMPLATE = {
     "guild_template": {
         "name": "",  # Note: automatically set to guild name on addition
-        "twitch_streamer_list": []
+        "twitch_streamer_list": [],
+        "twitch_category_list": []
     },
     "guilds": {}
 }

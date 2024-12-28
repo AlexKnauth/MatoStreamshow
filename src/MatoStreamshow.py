@@ -92,6 +92,64 @@ async def twitch_streamer_remove(interaction: discord.Interaction, twitch_userna
     else:
         await interaction.response.send_message(twitch_username + " not found")
 
+@bot.tree.command(name="twitch-category-list")
+async def twitch_category_list(interaction: discord.Interaction):
+    """
+    Lists the twitch categories to filter by.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    """
+    if interaction.guild is None: return
+    l = save.get_guild_data(interaction.guild)["twitch_category_list"]
+    save.save()
+    await interaction.response.send_message(str(l))
+
+@bot.tree.command(name="twitch-category-add")
+async def twitch_category_add(interaction: discord.Interaction, twitch_category: str):
+    """
+    Adds a twitch category to the list to filter by.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    twitch_category : str
+        The category ???.
+    """
+    if interaction.guild is None: return
+    l = save.get_guild_data(interaction.guild)["twitch_category_list"]
+    if twitch_category in l:
+        await interaction.response.send_message("Already contains " + twitch_category)
+    else:
+        l.append(twitch_category)
+        l.sort()
+        save.save()
+        await interaction.response.send_message("Added " + twitch_category)
+
+@bot.tree.command(name="twitch-category-remove")
+async def twitch_category_remove(interaction: discord.Interaction, twitch_category: str):
+    """
+    Removes a twitch category from the list to filter by.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    twitch_category : str
+        The category ???.
+    """
+    if interaction.guild is None: return
+    l = save.get_guild_data(interaction.guild)["twitch_category_list"]
+    if twitch_category in l:
+        l.remove(twitch_category)
+        save.save()
+        await interaction.response.send_message("Removed " + twitch_category)
+    else:
+        await interaction.response.send_message(twitch_category + " not found")
+
 def main():
     if config.token == "":
         raise ValueError('config token not found')
