@@ -1,7 +1,16 @@
 import config
 import discord
 from discord import app_commands
+from discord.ext.tasks import loop
 import save
+from twitchAPI.twitch import Twitch
+
+api: Twitch | None = None
+
+if not config.twitch_api_id:
+    print("config twitch_api_id not found")
+if not config.twitch_api_secret:
+    print("config twitch_api_secret not found")
 
 class MatoStreamshow(discord.Client):
     def __init__(self, *, intents: discord.Intents) -> None:
@@ -10,6 +19,28 @@ class MatoStreamshow(discord.Client):
 
     async def setup_hook(self):
         await self.tree.sync()
+        await bot.setup_twitch()
+
+    async def setup_twitch(self):
+        global api
+        if api is not None:
+            print("Setup attempted when already set up, ignoring")
+            return
+        if not config.twitch_api_id or not config.twitch_api_secret:
+            print("Setup attempted when twitch api info not present, ignoring")
+            return
+        api = await Twitch(config.twitch_api_id, config.twitch_api_secret, True, [])
+
+    @loop(minutes=1)
+    async def TwitchListen(self):
+        print("begin TwitchListen")
+        for g in save.get_guild_ids():
+            d = save.get_guild_data(g)
+            l = d["twitch_streamer_list"]
+            channels = api.get_streams(stream_type="live", user_login=l, first=100)
+            async for c in channels:
+                print(repr(c.user_name) + " is live! playing " + repr(c.game_name))
+        print("end TwitchListen")
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -18,6 +49,7 @@ bot = MatoStreamshow(intents=intents)
 
 @bot.event
 async def on_ready():
+    bot.TwitchListen.start()
     print('MatoStreamshow Bot is online!')
 
 @bot.tree.command()
@@ -31,7 +63,7 @@ async def ping(interaction: discord.Interaction):
         The interaction object.
     """
     if interaction.guild is None: return
-    save.get_guild_data(interaction.guild)
+    save.get_guild_data(str(interaction.guild.id))["name"] = interaction.guild.name
     await interaction.response.send_message("Pong!")
 
 @bot.tree.command(name="twitch-streamer-list")
@@ -45,7 +77,9 @@ async def twitch_streamer_list(interaction: discord.Interaction):
         The interaction object.
     """
     if interaction.guild is None: return
-    l = save.get_guild_data(interaction.guild)["twitch_streamer_list"]
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    l = d["twitch_streamer_list"]
     save.save()
     await interaction.response.send_message(str(l))
 
@@ -62,9 +96,13 @@ async def twitch_streamer_add(interaction: discord.Interaction, twitch_username:
         The streamer's twitch username.
     """
     if interaction.guild is None: return
-    l = save.get_guild_data(interaction.guild)["twitch_streamer_list"]
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    l = d["twitch_streamer_list"]
     if twitch_username in l:
         await interaction.response.send_message("Already contains " + twitch_username)
+    elif 100 <= l.length():
+        await interaction.response.send_message("You can only specify up to 100 names (Twitch API constraint)")
     else:
         l.append(twitch_username)
         l.sort()
@@ -84,7 +122,9 @@ async def twitch_streamer_remove(interaction: discord.Interaction, twitch_userna
         The streamer's twitch username.
     """
     if interaction.guild is None: return
-    l = save.get_guild_data(interaction.guild)["twitch_streamer_list"]
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    l = d["twitch_streamer_list"]
     if twitch_username in l:
         l.remove(twitch_username)
         save.save()
@@ -103,7 +143,9 @@ async def twitch_category_list(interaction: discord.Interaction):
         The interaction object.
     """
     if interaction.guild is None: return
-    l = save.get_guild_data(interaction.guild)["twitch_category_list"]
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    l = d["twitch_category_list"]
     save.save()
     await interaction.response.send_message(str(l))
 
@@ -120,7 +162,9 @@ async def twitch_category_add(interaction: discord.Interaction, twitch_category:
         The category ???.
     """
     if interaction.guild is None: return
-    l = save.get_guild_data(interaction.guild)["twitch_category_list"]
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    l = d["twitch_category_list"]
     if twitch_category in l:
         await interaction.response.send_message("Already contains " + twitch_category)
     else:
@@ -142,7 +186,9 @@ async def twitch_category_remove(interaction: discord.Interaction, twitch_catego
         The category ???.
     """
     if interaction.guild is None: return
-    l = save.get_guild_data(interaction.guild)["twitch_category_list"]
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    l = d["twitch_category_list"]
     if twitch_category in l:
         l.remove(twitch_category)
         save.save()

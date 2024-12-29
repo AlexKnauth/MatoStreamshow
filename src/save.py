@@ -21,16 +21,17 @@ def save():
     with open(JSON_PATH, "w") as f:
         json.dump(data, f, indent=4)
 
-def get_guild_data(guild: discord.Guild) -> dict:
-    guild_id: str = str(guild.id)
+def get_guild_ids() -> list[str]:
+    return data["guilds"].keys()
+
+def get_guild_data(guild_id: str) -> dict:
     if guild_id not in data["guilds"]:
         print("Guild not found: instantiating")
-        init_guild_data(guild_id, guild.name)
+        init_guild_data(guild_id)
     return data["guilds"][guild_id]
 
 def init_guild_data(guild_id: str, guild_name: str):
     data["guilds"][guild_id] = copy.deepcopy(data["guild_template"])
-    data["guilds"][guild_id]["name"] = guild_name
     save()
 
 if not os.path.exists(JSON_PATH):
