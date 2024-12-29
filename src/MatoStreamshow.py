@@ -52,7 +52,7 @@ class MatoStreamshow(discord.Client):
             async for tc in twitch_channels:
                 if len(cats) == 0 or tc.game_name in cats:
                     names.add(tc.user_name)
-                    text = "**" + tc.user_name + "** is live! playing " + tc.game_name
+                    text = "**" + discord.utils.escape_markdown(tc.user_name) + "** is live! Playing " + discord.utils.escape_markdown(tc.game_name)
                     url = "https://www.twitch.tv/" + tc.user_name
                     thumb = tc.thumbnail_url.replace("{width}", "240").replace("{height}", "160")
                     if tc.user_name in dcms:
@@ -126,7 +126,7 @@ async def twitch_streamer_list(interaction: discord.Interaction):
     d["name"] = interaction.guild.name
     l = d["twitch_streamer_list"]
     save.save()
-    await interaction.response.send_message(str(l))
+    await interaction.response.send_message(discord.utils.escape_markdown(str(l)))
 
 @bot.tree.command(name="twitch-streamer-add")
 async def twitch_streamer_add(interaction: discord.Interaction, twitch_username: str):
@@ -145,14 +145,14 @@ async def twitch_streamer_add(interaction: discord.Interaction, twitch_username:
     d["name"] = interaction.guild.name
     l = d["twitch_streamer_list"]
     if twitch_username in l:
-        await interaction.response.send_message("Already contains " + twitch_username)
+        await interaction.response.send_message("Already contains " + discord.utils.escape_markdown(twitch_username))
     elif 100 <= len(l):
         await interaction.response.send_message("You can only specify up to 100 names (Twitch API constraint)")
     else:
         l.append(twitch_username)
         l.sort()
         save.save()
-        await interaction.response.send_message("Added " + twitch_username)
+        await interaction.response.send_message("Added " + discord.utils.escape_markdown(twitch_username))
 
 @bot.tree.command(name="twitch-streamer-remove")
 async def twitch_streamer_remove(interaction: discord.Interaction, twitch_username: str):
@@ -173,9 +173,9 @@ async def twitch_streamer_remove(interaction: discord.Interaction, twitch_userna
     if twitch_username in l:
         l.remove(twitch_username)
         save.save()
-        await interaction.response.send_message("Removed " + twitch_username)
+        await interaction.response.send_message("Removed " + discord.utils.escape_markdown(twitch_username))
     else:
-        await interaction.response.send_message(twitch_username + " not found")
+        await interaction.response.send_message(discord.utils.escape_markdown(twitch_username) + " not found")
 
 @bot.tree.command(name="twitch-category-list")
 async def twitch_category_list(interaction: discord.Interaction):
@@ -192,7 +192,7 @@ async def twitch_category_list(interaction: discord.Interaction):
     d["name"] = interaction.guild.name
     l = d["twitch_category_list"]
     save.save()
-    await interaction.response.send_message(str(l))
+    await interaction.response.send_message(discord.utils.escape_markdown(str(l)))
 
 @bot.tree.command(name="twitch-category-add")
 async def twitch_category_add(interaction: discord.Interaction, twitch_category: str):
@@ -211,12 +211,12 @@ async def twitch_category_add(interaction: discord.Interaction, twitch_category:
     d["name"] = interaction.guild.name
     l = d["twitch_category_list"]
     if twitch_category in l:
-        await interaction.response.send_message("Already contains " + twitch_category)
+        await interaction.response.send_message("Already contains " + discord.utils.escape_markdown(twitch_category))
     else:
         l.append(twitch_category)
         l.sort()
         save.save()
-        await interaction.response.send_message("Added " + twitch_category)
+        await interaction.response.send_message("Added " + discord.utils.escape_markdown(twitch_category))
 
 @bot.tree.command(name="twitch-category-remove")
 async def twitch_category_remove(interaction: discord.Interaction, twitch_category: str):
@@ -237,9 +237,9 @@ async def twitch_category_remove(interaction: discord.Interaction, twitch_catego
     if twitch_category in l:
         l.remove(twitch_category)
         save.save()
-        await interaction.response.send_message("Removed " + twitch_category)
+        await interaction.response.send_message("Removed " + discord.utils.escape_markdown(twitch_category))
     else:
-        await interaction.response.send_message(twitch_category + " not found")
+        await interaction.response.send_message(discord.utils.escape_markdown(twitch_category) + " not found")
 
 def main():
     if config.token == "":
