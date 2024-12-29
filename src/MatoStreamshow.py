@@ -39,16 +39,33 @@ class MatoStreamshow(discord.Client):
             l = d["twitch_streamer_list"]
             cats = d["twitch_category_list"]
             dc = bot.get_channel(d["channel_id"])
+            dcms = {}
+            async for m in dc.history():
+                if m.author.id == self.user.id:
+                    name = m.embeds[0].author.name
+                    if name in dcms:
+                        await m.delete()
+                    else:
+                        dcms[name] = m
             twitch_channels = api.get_streams(stream_type="live", user_login=l, first=100)
+            names = set()
             async for tc in twitch_channels:
                 if len(cats) == 0 or tc.game_name in cats:
-                    text = tc.user_name + " is live! playing " + tc.game_name
+                    names.add(tc.user_name)
+                    text = "**" + tc.user_name + "** is live! playing " + tc.game_name
                     url = "https://www.twitch.tv/" + tc.user_name
                     thumb = tc.thumbnail_url.replace("{width}", "240").replace("{height}", "160")
-                    embed = discord.Embed(title=tc.title, url=url, description=tc.game_name)
-                    embed.set_author(name=tc.user_name, url=url)
-                    embed.set_thumbnail(url=thumb)
-                    await dc.send(text, embed=embed)
+                    if tc.user_name in dcms:
+                        # TODO: edit message if out of date
+                        pass
+                    else:
+                        embed = discord.Embed(title=tc.title, url=url, description=tc.game_name)
+                        embed.set_author(name=tc.user_name, url=url)
+                        embed.set_thumbnail(url=thumb)
+                        await dc.send(text, embed=embed)
+            for name, dcm in dcms.items():
+                if not name in names:
+                    await dcm.delete()
         print("end TwitchListen")
 
 intents = discord.Intents.default()
@@ -129,7 +146,7 @@ async def twitch_streamer_add(interaction: discord.Interaction, twitch_username:
     l = d["twitch_streamer_list"]
     if twitch_username in l:
         await interaction.response.send_message("Already contains " + twitch_username)
-    elif 100 <= l.length():
+    elif 100 <= len(l):
         await interaction.response.send_message("You can only specify up to 100 names (Twitch API constraint)")
     else:
         l.append(twitch_username)
