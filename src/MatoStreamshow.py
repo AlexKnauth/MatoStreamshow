@@ -157,7 +157,7 @@ async def twitch_streamer_add(interaction: discord.Interaction, twitch_username:
         await interaction.response.send_message("You can only specify up to 100 names (Twitch API constraint)")
     else:
         l.append(tu)
-        l.sort()
+        l.sort(key=str.casefold)
         save.save()
         await interaction.response.send_message("Added " + discord.utils.escape_markdown(tu))
 
@@ -224,7 +224,7 @@ async def twitch_category_add(interaction: discord.Interaction, twitch_category:
         await interaction.response.send_message("Already contains " + discord.utils.escape_markdown(twitch_category))
     else:
         l.append(twitch_category)
-        l.sort()
+        l.sort(key=str.casefold)
         save.save()
         await interaction.response.send_message("Added " + discord.utils.escape_markdown(twitch_category))
 
