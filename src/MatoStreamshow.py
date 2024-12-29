@@ -2,6 +2,7 @@ import config
 import discord
 from discord import app_commands
 from discord.ext.tasks import loop
+import re
 import save
 from twitchAPI.twitch import Twitch
 
@@ -11,6 +12,9 @@ if not config.twitch_api_id:
     print("config twitch_api_id not found")
 if not config.twitch_api_secret:
     print("config twitch_api_secret not found")
+
+def parse_twitch_username(s: str) -> str | None:
+    return re.search("\s*(.*@|.*twitch.tv/)?(\w+)\s*", s).group(2)
 
 class MatoStreamshow(discord.Client):
     def __init__(self, *, intents: discord.Intents) -> None:
@@ -144,15 +148,18 @@ async def twitch_streamer_add(interaction: discord.Interaction, twitch_username:
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
     l = d["twitch_streamer_list"]
-    if twitch_username in l:
-        await interaction.response.send_message("Already contains " + discord.utils.escape_markdown(twitch_username))
+    tu = parse_twitch_username(twitch_username)
+    if tu == None:
+        await interaction.response.send_message(discord.utils.escape_markdown(twitch_username) + " is not a valid twitch username")
+    elif tu in l:
+        await interaction.response.send_message("Already contains " + discord.utils.escape_markdown(tu))
     elif 100 <= len(l):
         await interaction.response.send_message("You can only specify up to 100 names (Twitch API constraint)")
     else:
-        l.append(twitch_username)
+        l.append(tu)
         l.sort()
         save.save()
-        await interaction.response.send_message("Added " + discord.utils.escape_markdown(twitch_username))
+        await interaction.response.send_message("Added " + discord.utils.escape_markdown(tu))
 
 @bot.tree.command(name="twitch-streamer-remove")
 async def twitch_streamer_remove(interaction: discord.Interaction, twitch_username: str):
@@ -170,12 +177,15 @@ async def twitch_streamer_remove(interaction: discord.Interaction, twitch_userna
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
     l = d["twitch_streamer_list"]
-    if twitch_username in l:
-        l.remove(twitch_username)
+    tu = parse_twitch_username(twitch_username)
+    if tu == None:
+        await interaction.response.send_message(discord.utils.escape_markdown(twitch_username) + " is not a valid twitch username")
+    elif tu in l:
+        l.remove(tu)
         save.save()
-        await interaction.response.send_message("Removed " + discord.utils.escape_markdown(twitch_username))
+        await interaction.response.send_message("Removed " + discord.utils.escape_markdown(tu))
     else:
-        await interaction.response.send_message(discord.utils.escape_markdown(twitch_username) + " not found")
+        await interaction.response.send_message(discord.utils.escape_markdown(tu) + " not found")
 
 @bot.tree.command(name="twitch-category-list")
 async def twitch_category_list(interaction: discord.Interaction):
