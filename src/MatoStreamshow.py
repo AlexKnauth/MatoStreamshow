@@ -37,9 +37,18 @@ class MatoStreamshow(discord.Client):
         for g in save.get_guild_ids():
             d = save.get_guild_data(g)
             l = d["twitch_streamer_list"]
-            channels = api.get_streams(stream_type="live", user_login=l, first=100)
-            async for c in channels:
-                print(repr(c.user_name) + " is live! playing " + repr(c.game_name))
+            cats = d["twitch_category_list"]
+            dc = bot.get_channel(d["channel_id"])
+            twitch_channels = api.get_streams(stream_type="live", user_login=l, first=100)
+            async for tc in twitch_channels:
+                if len(cats) == 0 or tc.game_name in cats:
+                    text = tc.user_name + " is live! playing " + tc.game_name
+                    url = "https://www.twitch.tv/" + tc.user_name
+                    thumb = tc.thumbnail_url.replace("{width}", "240").replace("{height}", "160")
+                    embed = discord.Embed(title=tc.title, url=url, description=tc.game_name)
+                    embed.set_author(name=tc.user_name, url=url)
+                    embed.set_thumbnail(url=thumb)
+                    await dc.send(text, embed=embed)
         print("end TwitchListen")
 
 intents = discord.Intents.default()
@@ -65,6 +74,25 @@ async def ping(interaction: discord.Interaction):
     if interaction.guild is None: return
     save.get_guild_data(str(interaction.guild.id))["name"] = interaction.guild.name
     await interaction.response.send_message("Pong!")
+
+@bot.tree.command()
+async def channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    """
+    Sets the text channel to send stream live messages to.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    channel : discord.TextChannel
+        The text channel to send stream live messages to.
+    """
+    if interaction.guild is None: return
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    d["channel_id"] = channel.id
+    save.save()
+    await interaction.response.send_message("Posting stream live messages in " + channel.mention)
 
 @bot.tree.command(name="twitch-streamer-list")
 async def twitch_streamer_list(interaction: discord.Interaction):
