@@ -14,7 +14,20 @@ if not config.twitch_api_secret:
     print("config twitch_api_secret not found")
 
 def parse_twitch_username(s: str) -> str | None:
-    return re.search("\s*(.*@|.*twitch.tv/)?(\w+)\s*", s).group(2)
+    m = re.search("\s*(.*@|.*twitch.tv/)?(\w+)\s*", s)
+    return m and m.group(2)
+
+def plain(s: str) -> str:
+    return discord.utils.escape_markdown(s).replace("://", "\u200b:\u200b/\u200b/\u200b").replace(".", "\u200b.\u200b")
+
+def code(s: str) -> str:
+    if s == "":
+        return "` `"
+    else:
+        return "``" + s.replace("`", "\u200b`\u200b") + "``"
+
+def codeblock(s: str, language: str = "") -> str:
+    return "```" + language + "\n" + s.replace("`", "\u200b`\u200b") + "\n```"
 
 class MatoStreamshow(discord.Client):
     def __init__(self, *, intents: discord.Intents) -> None:
@@ -56,7 +69,7 @@ class MatoStreamshow(discord.Client):
             async for tc in twitch_channels:
                 if len(cats) == 0 or tc.game_name in cats:
                     names.add(tc.user_name)
-                    text = "**" + discord.utils.escape_markdown(tc.user_name) + "** is live! Playing " + discord.utils.escape_markdown(tc.game_name)
+                    text = "**" + plain(tc.user_name) + "** is live! Playing " + plain(tc.game_name)
                     url = "https://www.twitch.tv/" + tc.user_name
                     thumb = tc.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
                     if tc.user_name in dcms:
@@ -134,7 +147,7 @@ async def twitch_streamer_list(interaction: discord.Interaction):
     d["name"] = interaction.guild.name
     l = d["twitch_streamer_list"]
     save.save()
-    await interaction.response.send_message(discord.utils.escape_markdown(str(l)))
+    await interaction.response.send_message(codeblock(repr(l), language="python"))
 
 @bot.tree.command(name="twitch-streamer-add")
 async def twitch_streamer_add(interaction: discord.Interaction, twitch_username: str):
@@ -154,16 +167,16 @@ async def twitch_streamer_add(interaction: discord.Interaction, twitch_username:
     l = d["twitch_streamer_list"]
     tu = parse_twitch_username(twitch_username)
     if tu == None:
-        await interaction.response.send_message(discord.utils.escape_markdown(twitch_username) + " is not a valid twitch username")
+        await interaction.response.send_message(code(repr(twitch_username)) + " is not a valid twitch username")
     elif tu in l:
-        await interaction.response.send_message("Already contains " + discord.utils.escape_markdown(tu))
+        await interaction.response.send_message("Already contains " + plain(tu))
     elif 100 <= len(l):
         await interaction.response.send_message("You can only specify up to 100 names (Twitch API constraint)")
     else:
         l.append(tu)
         l.sort(key=str.casefold)
         save.save()
-        await interaction.response.send_message("Added " + discord.utils.escape_markdown(tu))
+        await interaction.response.send_message("Added " + plain(tu))
 
 @bot.tree.command(name="twitch-streamer-remove")
 async def twitch_streamer_remove(interaction: discord.Interaction, twitch_username: str):
@@ -183,13 +196,13 @@ async def twitch_streamer_remove(interaction: discord.Interaction, twitch_userna
     l = d["twitch_streamer_list"]
     tu = parse_twitch_username(twitch_username)
     if tu == None:
-        await interaction.response.send_message(discord.utils.escape_markdown(twitch_username) + " is not a valid twitch username")
+        await interaction.response.send_message(code(repr(twitch_username)) + " is not a valid twitch username")
     elif tu in l:
         l.remove(tu)
         save.save()
-        await interaction.response.send_message("Removed " + discord.utils.escape_markdown(tu))
+        await interaction.response.send_message("Removed " + plain(tu))
     else:
-        await interaction.response.send_message(discord.utils.escape_markdown(tu) + " not found")
+        await interaction.response.send_message(plain(tu) + " not found")
 
 @bot.tree.command(name="twitch-category-list")
 async def twitch_category_list(interaction: discord.Interaction):
@@ -206,7 +219,7 @@ async def twitch_category_list(interaction: discord.Interaction):
     d["name"] = interaction.guild.name
     l = d["twitch_category_list"]
     save.save()
-    await interaction.response.send_message(discord.utils.escape_markdown(str(l)))
+    await interaction.response.send_message(codeblock(repr(l), language="python"))
 
 @bot.tree.command(name="twitch-category-add")
 async def twitch_category_add(interaction: discord.Interaction, twitch_category: str):
@@ -225,12 +238,12 @@ async def twitch_category_add(interaction: discord.Interaction, twitch_category:
     d["name"] = interaction.guild.name
     l = d["twitch_category_list"]
     if twitch_category in l:
-        await interaction.response.send_message("Already contains " + discord.utils.escape_markdown(twitch_category))
+        await interaction.response.send_message("Already contains " + plain(twitch_category))
     else:
         l.append(twitch_category)
         l.sort(key=str.casefold)
         save.save()
-        await interaction.response.send_message("Added " + discord.utils.escape_markdown(twitch_category))
+        await interaction.response.send_message("Added " + plain(twitch_category))
 
 @bot.tree.command(name="twitch-category-remove")
 async def twitch_category_remove(interaction: discord.Interaction, twitch_category: str):
@@ -251,9 +264,9 @@ async def twitch_category_remove(interaction: discord.Interaction, twitch_catego
     if twitch_category in l:
         l.remove(twitch_category)
         save.save()
-        await interaction.response.send_message("Removed " + discord.utils.escape_markdown(twitch_category))
+        await interaction.response.send_message("Removed " + plain(twitch_category))
     else:
-        await interaction.response.send_message(discord.utils.escape_markdown(twitch_category) + " not found")
+        await interaction.response.send_message(plain(twitch_category) + " not found")
 
 def main():
     if config.token == "":
