@@ -58,10 +58,14 @@ class MatoStreamshow(discord.Client):
                     names.add(tc.user_name)
                     text = "**" + discord.utils.escape_markdown(tc.user_name) + "** is live! Playing " + discord.utils.escape_markdown(tc.game_name)
                     url = "https://www.twitch.tv/" + tc.user_name
-                    thumb = tc.thumbnail_url.replace("{width}", "240").replace("{height}", "160")
+                    thumb = tc.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
                     if tc.user_name in dcms:
-                        # TODO: edit message if out of date
-                        pass
+                        m = dcms[tc.user_name]
+                        if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != tc.title:
+                            embed = discord.Embed(title=tc.title, url=url, description=tc.game_name)
+                            embed.set_author(name=tc.user_name, url=url)
+                            embed.set_thumbnail(url=thumb)
+                            await m.edit(content=text, embed=embed)
                     else:
                         embed = discord.Embed(title=tc.title, url=url, description=tc.game_name)
                         embed.set_author(name=tc.user_name, url=url)
