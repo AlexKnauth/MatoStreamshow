@@ -112,6 +112,8 @@ async def ping(interaction: discord.Interaction):
     await interaction.response.send_message("Pong!")
 
 @bot.tree.command()
+@app_commands.default_permissions(manage_channels=True)
+@app_commands.checks.has_permissions(manage_channels=True)
 async def channel(interaction: discord.Interaction, channel: discord.TextChannel):
     """
     Sets the text channel to send stream live messages to.
@@ -131,6 +133,8 @@ async def channel(interaction: discord.Interaction, channel: discord.TextChannel
     await interaction.response.send_message("Posting stream live messages in " + channel.mention)
 
 @bot.tree.command(name="twitch-streamer-list")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
 async def twitch_streamer_list(interaction: discord.Interaction):
     """
     Lists the twitch streamers to show when live.
@@ -148,6 +152,8 @@ async def twitch_streamer_list(interaction: discord.Interaction):
     await interaction.response.send_message(codeblock(repr(l), language="python"))
 
 @bot.tree.command(name="twitch-streamer-add")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
 async def twitch_streamer_add(interaction: discord.Interaction, twitch_username: str):
     """
     Adds a twitch streamer to the list to show when live.
@@ -177,6 +183,8 @@ async def twitch_streamer_add(interaction: discord.Interaction, twitch_username:
         await interaction.response.send_message("Added " + plain(tu))
 
 @bot.tree.command(name="twitch-streamer-remove")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
 async def twitch_streamer_remove(interaction: discord.Interaction, twitch_username: str):
     """
     Removes a twitch streamer from the list to show when live.
@@ -203,6 +211,8 @@ async def twitch_streamer_remove(interaction: discord.Interaction, twitch_userna
         await interaction.response.send_message(plain(tu) + " not found")
 
 @bot.tree.command(name="twitch-category-list")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
 async def twitch_category_list(interaction: discord.Interaction):
     """
     Lists the twitch categories to filter by.
@@ -220,6 +230,8 @@ async def twitch_category_list(interaction: discord.Interaction):
     await interaction.response.send_message(codeblock(repr(l), language="python"))
 
 @bot.tree.command(name="twitch-category-add")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
 async def twitch_category_add(interaction: discord.Interaction, twitch_category: str):
     """
     Adds a twitch category to the list to filter by.
@@ -244,6 +256,8 @@ async def twitch_category_add(interaction: discord.Interaction, twitch_category:
         await interaction.response.send_message("Added " + plain(twitch_category))
 
 @bot.tree.command(name="twitch-category-remove")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
 async def twitch_category_remove(interaction: discord.Interaction, twitch_category: str):
     """
     Removes a twitch category from the list to filter by.
