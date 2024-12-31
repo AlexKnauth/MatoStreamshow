@@ -50,7 +50,6 @@ class MatoStreamshow(discord.Client):
 
     @loop(minutes=1)
     async def TwitchListen(self):
-        print("begin TwitchListen")
         for g in save.get_guild_ids():
             d = save.get_guild_data(g)
             l = d["twitch_streamer_list"]
@@ -75,19 +74,18 @@ class MatoStreamshow(discord.Client):
                     if tc.user_name in dcms:
                         m = dcms[tc.user_name]
                         if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != tc.title:
-                            embed = discord.Embed(title=tc.title, url=url, description=tc.game_name)
+                            embed = discord.Embed(colour=discord.Colour.purple(), title=tc.title, url=url, description=tc.game_name)
                             embed.set_author(name=tc.user_name, url=url)
                             embed.set_thumbnail(url=thumb)
                             await m.edit(content=text, embed=embed)
                     else:
-                        embed = discord.Embed(title=tc.title, url=url, description=tc.game_name)
+                        embed = discord.Embed(colour=discord.Colour.purple(), title=tc.title, url=url, description=tc.game_name)
                         embed.set_author(name=tc.user_name, url=url)
                         embed.set_thumbnail(url=thumb)
                         await dc.send(text, embed=embed)
             for name, dcm in dcms.items():
                 if not name in names:
                     await dcm.delete()
-        print("end TwitchListen")
 
 intents = discord.Intents.default()
 intents.message_content = True
