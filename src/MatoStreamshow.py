@@ -54,7 +54,33 @@ class MatoStreamshow(discord.Client):
             d = save.get_guild_data(g)
             l = d["twitch_streamer_list"]
             cats = d["twitch_category_list"]
-            dc = bot.get_channel(d["channel_id"])
+            dc_id = d["channel_id"]
+            dsr_id = d["streamer_role_id"]
+            dlr_id = d["live_role_id"]
+            if not (dc_id and dc_id != 0):
+                continue
+            dc = bot.get_channel(dc_id)
+            streamer_members = set()
+            live_members = set()
+            if dsr_id and dlr_id and dsr_id != 0 and dlr_id != 0:
+                guild = self.get_guild(int(g))
+                dsr = guild.get_role(dsr_id)
+                dlr = guild.get_role(dlr_id)
+                for m in dsr.members:
+                    streamer_members.add(m)
+                for m in streamer_members:
+                    for a in m.activities:
+                        if isinstance(a, discord.Streaming):
+                            print(a.platform)
+                            print(a.twitch_name)
+                            print(a.name)
+                            print(a.game)
+                            print(a.url)
+                            live_members.add(m)
+                    if m in live_members:
+                        await m.add_roles(dlr, reason="Streaming Live")
+                    else:
+                        await m.remove_roles(dlr, reason="Not Streaming Live")
             dcms = {}
             async for m in dc.history():
                 if m.author.id == self.user.id:
@@ -88,6 +114,8 @@ class MatoStreamshow(discord.Client):
                     await dcm.delete()
 
 intents = discord.Intents.default()
+intents.presences = True
+intents.members = True
 intents.message_content = True
 
 bot = MatoStreamshow(intents=intents)
@@ -131,6 +159,48 @@ async def channel(interaction: discord.Interaction, channel: discord.TextChannel
     d["channel_id"] = channel.id
     save.save()
     await interaction.response.send_message("Posting stream live messages in " + channel.mention)
+
+@bot.tree.command(name="streamer-role")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
+async def streamer_role(interaction: discord.Interaction, role: discord.Role):
+    """
+    Sets the role to check streams for.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    role : discord.Role
+        The role to check streams for.
+    """
+    if interaction.guild is None: return
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    d["streamer_role_id"] = role.id
+    save.save()
+    await interaction.response.send_message("Streamer role set to " + plain(role.name))
+
+@bot.tree.command(name="live-role")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
+async def live_role(interaction: discord.Interaction, role: discord.Role):
+    """
+    Sets the role to grant streamers when live.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    role : discord.Role
+        The role to grant streamers when live.
+    """
+    if interaction.guild is None: return
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    d["live_role_id"] = role.id
+    save.save()
+    await interaction.response.send_message("Live role set to " + plain(role.name))
 
 @bot.tree.command(name="twitch-streamer-list")
 @app_commands.default_permissions(manage_roles=True)
