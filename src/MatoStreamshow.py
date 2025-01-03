@@ -141,7 +141,7 @@ class MatoStreamshow(discord.Client):
                         dcms[name] = m
             for name, info in live_info.items():
                 plain_game = plain(info.game_name)
-                text = "**" + plain(info.user_name) + "** is live! Playing " + plain_game
+                text = "**" + plain(info.display) + "** is live! Playing " + plain_game
                 title = plain(info.title)
                 thumb = info.thumbnail_url or guess_thumbnail_url(info.user_name, thumbnail_url_template)
                 if info.user_name in dcms:
