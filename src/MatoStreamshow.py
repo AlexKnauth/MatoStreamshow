@@ -1,3 +1,4 @@
+from collections import namedtuple
 import config
 import discord
 from discord import app_commands
@@ -13,9 +14,32 @@ if not config.twitch_api_id:
 if not config.twitch_api_secret:
     print("config twitch_api_secret not found")
 
+LiveInfo = namedtuple('LiveInfo', ['display', 'user_name', 'game_name', 'title', 'url', 'thumbnail_url'])
+
 def parse_twitch_username(s: str) -> str | None:
     m = re.search("\s*(.*@|.*twitch.tv/)?(\w+)\s*", s)
     return m and m.group(2)
+
+thumbnail_url_template = None
+
+def guess_thumbnail_url_template(user_name: str, thumbnail_url: str) -> str | None:
+    name = user_name.casefold()
+    template = thumbnail_url.replace(name, "{user_name}", 1)
+    if template.find(name) != -1:
+        return None
+    return template
+
+def guess_thumbnail_url(user_name: str, template: str | None) -> str | None:
+    if not template:
+        return None
+    return template.replace("{user_name}", user_name.casefold(), 1)
+
+def recover_case(s: str, l) -> str:
+    scf = s.casefold()
+    for e in l:
+        if scf == e.casefold():
+            return e
+    return s
 
 def plain(s: str) -> str:
     return discord.utils.escape_markdown(s).replace("://", "\u200b:\u200b/\u200b/\u200b").replace(".", "\u200b.\u200b")
@@ -50,6 +74,7 @@ class MatoStreamshow(discord.Client):
 
     @loop(minutes=1)
     async def TwitchListen(self):
+        global thumbnail_url_template
         for g in save.get_guild_ids():
             d = save.get_guild_data(g)
             l = d["twitch_streamer_list"]
@@ -62,6 +87,7 @@ class MatoStreamshow(discord.Client):
             dc = bot.get_channel(dc_id)
             streamer_members = set()
             live_members = set()
+            live_info = {}
             if dsr_id and dlr_id and dsr_id != 0 and dlr_id != 0:
                 guild = self.get_guild(int(g))
                 dsr = guild.get_role(dsr_id)
@@ -70,47 +96,67 @@ class MatoStreamshow(discord.Client):
                     streamer_members.add(m)
                 for m in streamer_members:
                     for a in m.activities:
-                        if isinstance(a, discord.Streaming):
-                            print(a.platform)
-                            print(a.twitch_name)
-                            print(a.name)
-                            print(a.game)
-                            print(a.url)
+                        if isinstance(a, discord.Streaming) and a.platform == "Twitch":
                             live_members.add(m)
+                            user_name = recover_case(a.twitch_name, l)
+                            live_info[user_name] = LiveInfo(
+                                display=m.display_name,
+                                user_name=user_name,
+                                game_name=a.game,
+                                title=a.name,
+                                url=a.url,
+                                thumbnail_url=None,
+                            )
                     if m in live_members:
                         await m.add_roles(dlr, reason="Streaming Live")
                     else:
                         await m.remove_roles(dlr, reason="Not Streaming Live")
+            streams = api.get_streams(stream_type="live", user_login=l, first=100)
+            async for stream in streams:
+                if len(cats) == 0 or stream.game_name in cats:
+                    if not stream.user_name in live_info:
+                        url = "https://www.twitch.tv/" + stream.user_name
+                        thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
+                        if not thumbnail_url_template:
+                            thumbnail_url_template = guess_thumbnail_url_template(stream.user_name, thumb)
+                        elif guess_thumbnail_url(stream.user_name, thumbnail_url_template) != thumb:
+                            thumbnail_url_template = None
+                        live_info[stream.user_name] = LiveInfo(
+                            display=stream.user_name,
+                            user_name=stream.user_name,
+                            game_name=stream.game_name,
+                            title=stream.title,
+                            url=url,
+                            thumbnail_url=thumb,
+                        )
             dcms = {}
             async for m in dc.history():
                 if m.author.id == self.user.id:
                     name = m.embeds[0].author.name
                     if name in dcms:
+                        # ** there can only be one! **
                         await m.delete()
                     else:
                         dcms[name] = m
-            twitch_channels = api.get_streams(stream_type="live", user_login=l, first=100)
-            names = set()
-            async for tc in twitch_channels:
-                if len(cats) == 0 or tc.game_name in cats:
-                    names.add(tc.user_name)
-                    text = "**" + plain(tc.user_name) + "** is live! Playing " + plain(tc.game_name)
-                    url = "https://www.twitch.tv/" + tc.user_name
-                    thumb = tc.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
-                    if tc.user_name in dcms:
-                        m = dcms[tc.user_name]
-                        if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != tc.title:
-                            embed = discord.Embed(colour=discord.Colour.purple(), title=tc.title, url=url, description=tc.game_name)
-                            embed.set_author(name=tc.user_name, url=url)
-                            embed.set_thumbnail(url=thumb)
-                            await m.edit(content=text, embed=embed)
-                    else:
-                        embed = discord.Embed(colour=discord.Colour.purple(), title=tc.title, url=url, description=tc.game_name)
-                        embed.set_author(name=tc.user_name, url=url)
+            for name, info in live_info.items():
+                plain_game = plain(info.game_name)
+                text = "**" + plain(info.user_name) + "** is live! Playing " + plain_game
+                title = plain(info.title)
+                thumb = info.thumbnail_url or guess_thumbnail_url(info.user_name, thumbnail_url_template)
+                if info.user_name in dcms:
+                    m = dcms[info.user_name]
+                    if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
+                        embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game)
+                        embed.set_author(name=info.user_name, url=info.url)
                         embed.set_thumbnail(url=thumb)
-                        await dc.send(text, embed=embed)
+                        await m.edit(content=text, embed=embed)
+                else:
+                    embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game)
+                    embed.set_author(name=info.user_name, url=info.url)
+                    embed.set_thumbnail(url=thumb)
+                    await dc.send(text, embed=embed)
             for name, dcm in dcms.items():
-                if not name in names:
+                if not name in live_info:
                     await dcm.delete()
 
 intents = discord.Intents.default()
