@@ -113,22 +113,23 @@ class MatoStreamshow(discord.Client):
                         await m.remove_roles(dlr, reason="Not Streaming Live")
             streams = api.get_streams(stream_type="live", user_login=l, first=100)
             async for stream in streams:
-                if len(cats) == 0 or stream.game_name in cats:
-                    if not stream.user_name in live_info:
-                        url = "https://www.twitch.tv/" + stream.user_name
-                        thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
-                        if not thumbnail_url_template:
-                            thumbnail_url_template = guess_thumbnail_url_template(stream.user_name, thumb)
-                        elif guess_thumbnail_url(stream.user_name, thumbnail_url_template) != thumb:
-                            thumbnail_url_template = None
-                        live_info[stream.user_name] = LiveInfo(
-                            display=stream.user_name,
-                            user_name=stream.user_name,
-                            game_name=stream.game_name,
-                            title=stream.title,
-                            url=url,
-                            thumbnail_url=thumb,
-                        )
+                thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
+                if not thumbnail_url_template:
+                    thumbnail_url_template = guess_thumbnail_url_template(stream.user_name, thumb)
+                    print("thumbnail_url_template: " + thumbnail_url_template)
+                elif guess_thumbnail_url(stream.user_name, thumbnail_url_template) != thumb:
+                    print("invalid thumbnail_url_template: " + thumbnail_url_template)
+                    thumbnail_url_template = None
+                if (not stream.user_name in live_info) and (len(cats) == 0 or stream.game_name in cats):
+                    url = "https://www.twitch.tv/" + stream.user_name
+                    live_info[stream.user_name] = LiveInfo(
+                        display=stream.user_name,
+                        user_name=stream.user_name,
+                        game_name=stream.game_name,
+                        title=stream.title,
+                        url=url,
+                        thumbnail_url=thumb,
+                    )
             dcms = {}
             async for m in dc.history():
                 if m.author.id == self.user.id:
