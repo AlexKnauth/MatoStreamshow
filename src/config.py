@@ -12,6 +12,8 @@ twitch_api_secret: str | None = data.get("twitch_api_secret")
 """
 Example config.json:
 {
-    "token": ""
+    "token": "",
+    "twitch_api_id": "",
+    "twitch_api_secret": ""
 }
 """

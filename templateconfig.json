@@ -1,3 +1,5 @@
 {
-    "token": ""
+    "token": "",
+    "twitch_api_id": "",
+    "twitch_api_secret": ""
 }

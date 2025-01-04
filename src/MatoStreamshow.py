@@ -9,9 +9,9 @@ from twitchAPI.twitch import Twitch
 
 api: Twitch | None = None
 
-if not config.twitch_api_id:
+if (not config.twitch_api_id) or config.twitch_api_id == "":
     print("config twitch_api_id not found")
-if not config.twitch_api_secret:
+if (not config.twitch_api_secret) or config.twitch_api_secret == "":
     print("config twitch_api_secret not found")
 
 LiveInfo = namedtuple('LiveInfo', ['display', 'user_name', 'game_name', 'title', 'url', 'thumbnail_url'])
@@ -67,7 +67,7 @@ class MatoStreamshow(discord.Client):
         if api is not None:
             print("Setup attempted when already set up, ignoring")
             return
-        if not config.twitch_api_id or not config.twitch_api_secret:
+        if not config.twitch_api_id or not config.twitch_api_secret or config.twitch_api_id == "" or config.twitch_api_secret == "":
             print("Setup attempted when twitch api info not present, ignoring")
             return
         api = await Twitch(config.twitch_api_id, config.twitch_api_secret, True, [])
