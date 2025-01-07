@@ -88,10 +88,9 @@ class MatoStreamshow(discord.Client):
             streamer_members = set()
             live_members = set()
             live_info = {}
-            if dsr_id and dlr_id and dsr_id != 0 and dlr_id != 0:
+            if dsr_id and dsr_id != 0:
                 guild = self.get_guild(int(g))
                 dsr = guild.get_role(dsr_id)
-                dlr = guild.get_role(dlr_id)
                 for m in dsr.members:
                     streamer_members.add(m)
                 for m in streamer_members:
@@ -107,10 +106,18 @@ class MatoStreamshow(discord.Client):
                                 url=a.url,
                                 thumbnail_url=None,
                             )
-                    if m in live_members:
-                        await m.add_roles(dlr, reason="Streaming Live")
-                    else:
-                        await m.remove_roles(dlr, reason="Not Streaming Live")
+                if dlr_id and dlr_id != 0:
+                    try:
+                        dlr = guild.get_role(dlr_id)
+                        for m in streamer_members:
+                            if m in live_members:
+                                await m.add_roles(dlr, reason="Streaming Live")
+                            else:
+                                await m.remove_roles(dlr, reason="Not Streaming Live")
+                    except Forbidden:
+                        print("MatoStreamshow needs permission to manage the live role")
+                    except discord.DiscordServerError:
+                        print("Discord Server Error while managing the live role")
             streams = api.get_streams(stream_type="live", user_login=l, first=100)
             async for stream in streams:
                 thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
