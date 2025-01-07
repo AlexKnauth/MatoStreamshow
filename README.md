@@ -3,6 +3,16 @@ A discord bot to show live streams
 
 If you want to use the instance of the bot hosted by me, Alex Knauth, contact me on discord.
 
+## Configuring with Commands
+
+Use the `/channel` command to set a channel to post in, for example `/channel #streams-live`.
+
+Use the `/streamer-role` to set a role for it to search for members who are live, and `/live-role` to set a role for it to give members who are live. For example `/streamer-role @VIP` and `/live-role @Now Live`.
+
+You can also use `/twitch-streamer-add` to add twitch usernames, and `/twitch-category-add` to set up a list of categories to filter those twitch usernames by. For example `/twitch-streamer-add AlexKnauth` and `/twitch-category-add Software and Game Development`.
+
+Remove twitch usernames and categories with `/twitch-streamer-remove` and `/twitch-category-remove`, respectively, and see which ones are currently configured with `/twitch-streamer-list` and `/twitch-category-list`, respectively.
+
 ## Instructions for Self-hosting
 
 Install the `discordpy` python library with `pip install discord.py`.
