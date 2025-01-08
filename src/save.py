@@ -33,7 +33,7 @@ def get_guild_data(guild_id: str) -> dict:
         init_guild_data(guild_id)
     return data["guilds"][guild_id]
 
-def init_guild_data(guild_id: str, guild_name: str):
+def init_guild_data(guild_id: str):
     data["guilds"][guild_id] = copy.deepcopy(data["guild_template"])
     save()
 

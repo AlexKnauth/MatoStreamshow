@@ -114,7 +114,7 @@ class MatoStreamshow(discord.Client):
                                 await m.add_roles(dlr, reason="Streaming Live")
                             else:
                                 await m.remove_roles(dlr, reason="Not Streaming Live")
-                    except Forbidden:
+                    except discord.Forbidden:
                         print("MatoStreamshow needs permission to manage the live role")
                     except discord.DiscordServerError:
                         print("Discord Server Error while managing the live role")
