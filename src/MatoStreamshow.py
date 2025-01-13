@@ -252,9 +252,16 @@ async def live_role(interaction: discord.Interaction, role: discord.Role):
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
-    d["live_role_id"] = role.id
-    save.save()
-    await interaction.response.send_message("Live role set to " + plain(role.name))
+    if role.is_assignable():
+        d["live_role_id"] = role.id
+        save.save()
+        await interaction.response.send_message("Live role set to " + plain(role.name))
+    elif d["live_role_id"] == 0:
+        d["live_role_id"] = role.id
+        save.save()
+        await interaction.response.send_message("Warning: MatoStreamshow can't assign "+ plain(role.name) + " until MatoStreamshow's role is moved above it")
+    else:
+        await interaction.response.send_message("Error: MatoStreamshow can't assign "+ plain(role.name) + " unless MatoStreamshow's role is moved above it")
 
 @bot.tree.command(name="twitch-streamer-list")
 @app_commands.default_permissions(manage_roles=True)
