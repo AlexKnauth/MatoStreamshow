@@ -138,14 +138,19 @@ class MatoStreamshow(discord.Client):
                         thumbnail_url=thumb,
                     )
             dcms = {}
-            async for m in dc.history():
-                if m.author.id == self.user.id:
-                    name = m.embeds[0].author.name
-                    if name in dcms:
-                        # ** there can only be one! **
-                        await m.delete()
-                    else:
-                        dcms[name] = m
+            try:
+                async for m in dc.history():
+                    if m.author.id == self.user.id:
+                        name = m.embeds[0].author.name
+                        if name in dcms:
+                            # ** there can only be one! **
+                            await m.delete()
+                        else:
+                            dcms[name] = m
+            except discord.Forbidden:
+                print("MatoStreamshow needs permission to read message history")
+            except discord.DiscordServerError:
+                print("Discord Server Error while managing message history")
             for name, info in live_info.items():
                 plain_game = plain(info.game_name)
                 text = "**" + plain(info.display) + "** is live! Playing " + plain_game
