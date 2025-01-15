@@ -1,5 +1,6 @@
 from collections import namedtuple
 import config
+import datetime
 import discord
 from discord import app_commands
 from discord.ext.tasks import loop
@@ -14,7 +15,7 @@ if (not config.twitch_api_id) or config.twitch_api_id == "":
 if (not config.twitch_api_secret) or config.twitch_api_secret == "":
     print("config twitch_api_secret not found")
 
-LiveInfo = namedtuple('LiveInfo', ['display', 'user_name', 'game_name', 'title', 'url', 'thumbnail_url'])
+LiveInfo = namedtuple('LiveInfo', ['display', 'user_name', 'game_name', 'title', 'url', 'thumbnail_url', 'started_at'])
 
 def parse_twitch_username(s: str) -> str | None:
     m = re.search("\s*(.*@|.*twitch.tv/)?(\w+)\s*", s)
@@ -105,6 +106,7 @@ class MatoStreamshow(discord.Client):
                                 title=a.name,
                                 url=a.url,
                                 thumbnail_url=None,
+                                started_at=a.start,
                             )
                 if dlr_id and dlr_id != 0:
                     try:
@@ -136,6 +138,7 @@ class MatoStreamshow(discord.Client):
                         title=stream.title,
                         url=url,
                         thumbnail_url=thumb,
+                        started_at=stream.started_at,
                     )
             dcms = {}
             try:
@@ -159,12 +162,15 @@ class MatoStreamshow(discord.Client):
                 if info.user_name in dcms:
                     m = dcms[info.user_name]
                     if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
-                        embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game)
+                        embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game, timestamp=info.started_at)
                         embed.set_author(name=info.user_name, url=info.url)
                         embed.set_thumbnail(url=thumb)
                         await m.edit(content=text, embed=embed)
+                    else:
+                        n = info.started_at and (datetime.datetime.now(datetime.timezone.utc) - info.started_at) // datetime.timedelta(minutes=5)
+                        m.embeds[0].set_thumbnail(url=thumb + "#" + str(n))
                 else:
-                    embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game)
+                    embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game, timestamp=info.started_at)
                     embed.set_author(name=info.user_name, url=info.url)
                     embed.set_thumbnail(url=thumb)
                     await dc.send(text, embed=embed)
