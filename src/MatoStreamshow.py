@@ -181,7 +181,8 @@ bot = MatoStreamshow(intents=intents)
 
 @bot.event
 async def on_ready():
-    bot.TwitchListen.start()
+    if not bot.TwitchListen.is_running():
+        bot.TwitchListen.start()
     print('MatoStreamshow Bot is online!')
 
 @bot.tree.command()
