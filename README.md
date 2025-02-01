@@ -31,6 +31,9 @@ Run:
 python src/MatoStreamshow.py
 ```
 
+If you get an error message about `ModuleNotFoundError: No module named 'audioop'`,
+you can fix that with `pip install audioop-lts`.
+
 ## Privacy Policy Questions & Answers
 
 > What data do you collect?
