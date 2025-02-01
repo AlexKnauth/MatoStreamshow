@@ -17,7 +17,7 @@ if (not config.twitch_api_secret) or config.twitch_api_secret == "":
 LiveInfo = namedtuple('LiveInfo', ['display', 'user_name', 'game_name', 'title', 'url', 'thumbnail_url'])
 
 def parse_twitch_username(s: str) -> str | None:
-    m = re.search("\s*(.*@|.*twitch.tv/)?(\w+)\s*", s)
+    m = re.search(r"\s*(.*@|.*twitch.tv/)?(\w+)\s*", s)
     return m and m.group(2)
 
 thumbnail_url_template = None
