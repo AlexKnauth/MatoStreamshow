@@ -76,106 +76,104 @@ class MatoStreamshow(discord.Client):
     @loop(minutes=1)
     async def TwitchListen(self):
         global thumbnail_url_template
-        for g in save.get_guild_ids():
-            d = save.get_guild_data(g)
-            l = d["twitch_streamer_list"]
-            cats = d["twitch_category_list"]
-            dc_id = d["channel_id"]
-            dsr_id = d["streamer_role_id"]
-            dlr_id = d["live_role_id"]
-            if not (dc_id and dc_id != 0):
-                continue
-            dc = bot.get_channel(dc_id)
-            streamer_members = set()
-            live_members = set()
-            live_info = {}
-            if dsr_id and dsr_id != 0:
-                guild = self.get_guild(int(g))
-                dsr = guild.get_role(dsr_id)
-                for m in dsr.members:
-                    streamer_members.add(m)
-                for m in streamer_members:
-                    for a in m.activities:
-                        if isinstance(a, discord.Streaming) and a.platform == "Twitch":
-                            live_members.add(m)
-                            user_name = recover_case(a.twitch_name, l)
-                            live_info[user_name] = LiveInfo(
-                                display=m.display_name,
-                                user_name=user_name,
-                                game_name=a.game,
-                                title=a.name,
-                                url=a.url,
-                                thumbnail_url=None,
-                            )
-                if dlr_id and dlr_id != 0:
-                    try:
-                        dlr = guild.get_role(dlr_id)
-                        for m in streamer_members:
-                            if m in live_members:
-                                await m.add_roles(dlr, reason="Streaming Live")
+        try:
+            for g in save.get_guild_ids():
+                d = save.get_guild_data(g)
+                l = d["twitch_streamer_list"]
+                cats = d["twitch_category_list"]
+                dc_id = d["channel_id"]
+                dsr_id = d["streamer_role_id"]
+                dlr_id = d["live_role_id"]
+                if not (dc_id and dc_id != 0):
+                    continue
+                dc = bot.get_channel(dc_id)
+                streamer_members = set()
+                live_members = set()
+                live_info = {}
+                if dsr_id and dsr_id != 0:
+                    guild = self.get_guild(int(g))
+                    dsr = guild.get_role(dsr_id)
+                    for m in dsr.members:
+                        streamer_members.add(m)
+                    for m in streamer_members:
+                        for a in m.activities:
+                            if isinstance(a, discord.Streaming) and a.platform == "Twitch":
+                                live_members.add(m)
+                                user_name = recover_case(a.twitch_name, l)
+                                live_info[user_name] = LiveInfo(
+                                    display=m.display_name,
+                                    user_name=user_name,
+                                    game_name=a.game,
+                                    title=a.name,
+                                    url=a.url,
+                                    thumbnail_url=None,
+                                )
+                    if dlr_id and dlr_id != 0:
+                        try:
+                            dlr = guild.get_role(dlr_id)
+                            for m in streamer_members:
+                                if m in live_members:
+                                    await m.add_roles(dlr, reason="Streaming Live")
+                                else:
+                                    await m.remove_roles(dlr, reason="Not Streaming Live")
+                        except discord.Forbidden as e:
+                            print("MatoStreamshow needs permission to manage the live role")
+                            traceback.print_exception(e)
+                streams = api.get_streams(stream_type="live", user_login=l, first=100)
+                async for stream in streams:
+                    thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
+                    if not thumbnail_url_template:
+                        thumbnail_url_template = guess_thumbnail_url_template(stream.user_name, thumb)
+                        print("thumbnail_url_template: " + thumbnail_url_template)
+                    elif guess_thumbnail_url(stream.user_name, thumbnail_url_template) != thumb:
+                        print("invalid thumbnail_url_template: " + thumbnail_url_template)
+                        thumbnail_url_template = None
+                    if (not stream.user_name in live_info) and (len(cats) == 0 or stream.game_name in cats):
+                        url = "https://www.twitch.tv/" + stream.user_name
+                        live_info[stream.user_name] = LiveInfo(
+                            display=stream.user_name,
+                            user_name=stream.user_name,
+                            game_name=stream.game_name,
+                            title=stream.title,
+                            url=url,
+                            thumbnail_url=thumb,
+                        )
+                dcms = {}
+                try:
+                    async for m in dc.history():
+                        if m.author.id == self.user.id:
+                            name = m.embeds[0].author.name
+                            if name in dcms:
+                                # ** there can only be one! **
+                                await m.delete()
                             else:
-                                await m.remove_roles(dlr, reason="Not Streaming Live")
-                    except discord.Forbidden as e:
-                        print("MatoStreamshow needs permission to manage the live role")
-                        traceback.print_exception(e)
-                    except discord.DiscordServerError as e:
-                        print("Discord Server Error while managing the live role")
-                        traceback.print_exception(e)
-            streams = api.get_streams(stream_type="live", user_login=l, first=100)
-            async for stream in streams:
-                thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
-                if not thumbnail_url_template:
-                    thumbnail_url_template = guess_thumbnail_url_template(stream.user_name, thumb)
-                    print("thumbnail_url_template: " + thumbnail_url_template)
-                elif guess_thumbnail_url(stream.user_name, thumbnail_url_template) != thumb:
-                    print("invalid thumbnail_url_template: " + thumbnail_url_template)
-                    thumbnail_url_template = None
-                if (not stream.user_name in live_info) and (len(cats) == 0 or stream.game_name in cats):
-                    url = "https://www.twitch.tv/" + stream.user_name
-                    live_info[stream.user_name] = LiveInfo(
-                        display=stream.user_name,
-                        user_name=stream.user_name,
-                        game_name=stream.game_name,
-                        title=stream.title,
-                        url=url,
-                        thumbnail_url=thumb,
-                    )
-            dcms = {}
-            try:
-                async for m in dc.history():
-                    if m.author.id == self.user.id:
-                        name = m.embeds[0].author.name
-                        if name in dcms:
-                            # ** there can only be one! **
-                            await m.delete()
-                        else:
-                            dcms[name] = m
-            except discord.Forbidden as e:
-                print("MatoStreamshow needs permission to read message history")
-                traceback.print_exception(e)
-            except discord.DiscordServerError as e:
-                print("Discord Server Error while managing message history")
-                traceback.print_exception(e)
-            for name, info in live_info.items():
-                plain_game = plain(info.game_name)
-                text = "**" + plain(info.display) + "** is live! Playing " + plain_game
-                title = plain(info.title)
-                thumb = info.thumbnail_url or guess_thumbnail_url(info.user_name, thumbnail_url_template)
-                if info.user_name in dcms:
-                    m = dcms[info.user_name]
-                    if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
+                                dcms[name] = m
+                except discord.Forbidden as e:
+                    print("MatoStreamshow needs permission to read message history")
+                    traceback.print_exception(e)
+                for name, info in live_info.items():
+                    plain_game = plain(info.game_name)
+                    text = "**" + plain(info.display) + "** is live! Playing " + plain_game
+                    title = plain(info.title)
+                    thumb = info.thumbnail_url or guess_thumbnail_url(info.user_name, thumbnail_url_template)
+                    if info.user_name in dcms:
+                        m = dcms[info.user_name]
+                        if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
+                            embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game)
+                            embed.set_author(name=info.user_name, url=info.url)
+                            embed.set_thumbnail(url=thumb)
+                            await m.edit(content=text, embed=embed)
+                    else:
                         embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game)
                         embed.set_author(name=info.user_name, url=info.url)
                         embed.set_thumbnail(url=thumb)
-                        await m.edit(content=text, embed=embed)
-                else:
-                    embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game)
-                    embed.set_author(name=info.user_name, url=info.url)
-                    embed.set_thumbnail(url=thumb)
-                    await dc.send(text, embed=embed)
-            for name, dcm in dcms.items():
-                if not name in live_info:
-                    await dcm.delete()
+                        await dc.send(text, embed=embed)
+                for name, dcm in dcms.items():
+                    if not name in live_info:
+                        await dcm.delete()
+        except discord.DiscordServerError as e:
+            print("Discord Server Error in TwitchListen")
+            traceback.print_exception(e)
 
 intents = discord.Intents.default()
 intents.presences = True
