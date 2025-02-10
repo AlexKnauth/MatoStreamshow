@@ -5,6 +5,7 @@ from discord import app_commands
 from discord.ext.tasks import loop
 import re
 import save
+import traceback
 from twitchAPI.twitch import Twitch
 
 api: Twitch | None = None
@@ -114,10 +115,12 @@ class MatoStreamshow(discord.Client):
                                 await m.add_roles(dlr, reason="Streaming Live")
                             else:
                                 await m.remove_roles(dlr, reason="Not Streaming Live")
-                    except discord.Forbidden:
+                    except discord.Forbidden as e:
                         print("MatoStreamshow needs permission to manage the live role")
-                    except discord.DiscordServerError:
+                        traceback.print_exception(e)
+                    except discord.DiscordServerError as e:
                         print("Discord Server Error while managing the live role")
+                        traceback.print_exception(e)
             streams = api.get_streams(stream_type="live", user_login=l, first=100)
             async for stream in streams:
                 thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
@@ -147,10 +150,12 @@ class MatoStreamshow(discord.Client):
                             await m.delete()
                         else:
                             dcms[name] = m
-            except discord.Forbidden:
+            except discord.Forbidden as e:
                 print("MatoStreamshow needs permission to read message history")
-            except discord.DiscordServerError:
+                traceback.print_exception(e)
+            except discord.DiscordServerError as e:
                 print("Discord Server Error while managing message history")
+                traceback.print_exception(e)
             for name, info in live_info.items():
                 plain_game = plain(info.game_name)
                 text = "**" + plain(info.display) + "** is live! Playing " + plain_game
