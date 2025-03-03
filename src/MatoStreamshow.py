@@ -225,9 +225,16 @@ async def channel(interaction: discord.Interaction, channel: discord.TextChannel
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
-    d["channel_id"] = channel.id
-    save.save()
-    await interaction.response.send_message("Posting stream live messages in " + channel.mention)
+    if channel.permissions_for(interaction.guild.me).send_messages:
+        d["channel_id"] = channel.id
+        save.save()
+        await interaction.response.send_message("Posting stream live messages in " + channel.mention)
+    elif d["channel_id"] == 0:
+        d["channel_id"] = channel.id
+        save.save()
+        await interaction.response.send_message("Warning: MatoStreamshow needs permission to send messages in " + channel.mention)
+    else:
+        await interaction.response.send_message("Error: MatoStreamshow needsn permission to send messages in " + channel.mention)
 
 @bot.tree.command(name="streamer-role")
 @app_commands.default_permissions(manage_roles=True)
