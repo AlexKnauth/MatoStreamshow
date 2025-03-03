@@ -151,23 +151,29 @@ class MatoStreamshow(discord.Client):
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to read message history")
                     traceback.print_exception(e)
-                for name, info in live_info.items():
-                    plain_game = plain(info.game_name)
-                    text = "**" + plain(info.display) + "** is live! Playing " + plain_game
-                    title = plain(info.title)
-                    thumb = info.thumbnail_url or guess_thumbnail_url(info.user_name, thumbnail_url_template)
-                    if info.user_name in dcms:
-                        m = dcms[info.user_name]
-                        if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
+                try:
+                    for name, info in live_info.items():
+                        plain_game = plain(info.game_name)
+                        text = "**" + plain(info.display) + "** is live! Playing " + plain_game
+                        title = plain(info.title)
+                        thumb = info.thumbnail_url or guess_thumbnail_url(info.user_name, thumbnail_url_template)
+                        if info.user_name in dcms:
+                            m = dcms[info.user_name]
+                            if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
+                                embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game)
+                                embed.set_author(name=info.user_name, url=info.url)
+                                embed.set_thumbnail(url=thumb)
+                                await m.edit(content=text, embed=embed)
+                        else:
                             embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game)
                             embed.set_author(name=info.user_name, url=info.url)
                             embed.set_thumbnail(url=thumb)
-                            await m.edit(content=text, embed=embed)
-                    else:
-                        embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=info.url, description=plain_game)
-                        embed.set_author(name=info.user_name, url=info.url)
-                        embed.set_thumbnail(url=thumb)
-                        await dc.send(text, embed=embed)
+                            await dc.send(text, embed=embed)
+                except discord.Forbidden as e:
+                    print("MatoStreamshow needs permission to send messages in:")
+                    print("  Server name: " + d["name"])
+                    print("  Channel id: " + str(dc_id))
+                    traceback.print_exception(e)
                 for name, dcm in dcms.items():
                     if not name in live_info:
                         await dcm.delete()
