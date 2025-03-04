@@ -22,6 +22,7 @@ def parse_twitch_username(s: str) -> str | None:
     return m and m.group(2)
 
 thumbnail_url_template = None
+invalid_thumbnail_url_templates = []
 
 def guess_thumbnail_url_template(user_name: str, thumbnail_url: str) -> str | None:
     name = user_name.casefold()
@@ -123,10 +124,13 @@ class MatoStreamshow(discord.Client):
                 async for stream in streams:
                     thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
                     if not thumbnail_url_template:
-                        thumbnail_url_template = guess_thumbnail_url_template(stream.user_name, thumb)
-                        print("thumbnail_url_template: " + thumbnail_url_template)
+                        template = guess_thumbnail_url_template(stream.user_name, thumb)
+                        if not template in invalid_thumbnail_url_templates:
+                            thumbnail_url_template = template
+                            print("current thumbnail_url_template: " + thumbnail_url_template)
                     elif guess_thumbnail_url(stream.user_name, thumbnail_url_template) != thumb:
                         print("invalid thumbnail_url_template: " + thumbnail_url_template)
+                        invalid_thumbnail_url_templates.append(thumbnail_url_template)
                         thumbnail_url_template = None
                     if (not stream.user_name in live_info) and (len(cats) == 0 or stream.game_name in cats):
                         url = "https://www.twitch.tv/" + stream.user_name
