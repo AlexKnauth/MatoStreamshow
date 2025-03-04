@@ -234,7 +234,7 @@ async def channel(interaction: discord.Interaction, channel: discord.TextChannel
         save.save()
         await interaction.response.send_message("Warning: MatoStreamshow needs permission to send messages in " + channel.mention)
     else:
-        await interaction.response.send_message("Error: MatoStreamshow needsn permission to send messages in " + channel.mention)
+        await interaction.response.send_message("Error: MatoStreamshow needs permission to send messages in " + channel.mention)
 
 @bot.tree.command(name="streamer-role")
 @app_commands.default_permissions(manage_roles=True)
