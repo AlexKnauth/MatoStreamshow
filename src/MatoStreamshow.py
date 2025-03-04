@@ -141,7 +141,7 @@ class MatoStreamshow(discord.Client):
                 dcms = {}
                 try:
                     async for m in dc.history():
-                        if m.author.id == self.user.id:
+                        if m.author.id == self.user.id and 1 <= len(m.embeds):
                             name = m.embeds[0].author.name
                             if name in dcms:
                                 # ** there can only be one! **
