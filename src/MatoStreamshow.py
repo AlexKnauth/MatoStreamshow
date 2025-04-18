@@ -120,28 +120,34 @@ class MatoStreamshow(discord.Client):
                         except discord.Forbidden as e:
                             print("MatoStreamshow needs permission to manage the live role")
                             traceback.print_exception(e)
-                streams = api.get_streams(stream_type="live", user_login=l, first=100)
-                async for stream in streams:
-                    thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
-                    if not thumbnail_url_template:
-                        template = guess_thumbnail_url_template(stream.user_name, thumb)
-                        if not template in invalid_thumbnail_url_templates:
-                            thumbnail_url_template = template
-                            print("current thumbnail_url_template: " + thumbnail_url_template)
-                    elif guess_thumbnail_url(stream.user_name, thumbnail_url_template) != thumb:
-                        print("invalid thumbnail_url_template: " + thumbnail_url_template)
-                        invalid_thumbnail_url_templates.append(thumbnail_url_template)
-                        thumbnail_url_template = None
-                    if (not stream.user_name in live_info) and (len(cats) == 0 or stream.game_name in cats):
-                        url = "https://www.twitch.tv/" + stream.user_name
-                        live_info[stream.user_name] = LiveInfo(
-                            display=stream.user_name,
-                            user_name=stream.user_name,
-                            game_name=stream.game_name,
-                            title=stream.title,
-                            url=url,
-                            thumbnail_url=thumb,
-                        )
+                hadTwitchBackendException = False
+                try:
+                    streams = api.get_streams(stream_type="live", user_login=l, first=100)
+                    async for stream in streams:
+                        thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
+                        if not thumbnail_url_template:
+                            template = guess_thumbnail_url_template(stream.user_name, thumb)
+                            if not template in invalid_thumbnail_url_templates:
+                                thumbnail_url_template = template
+                                print("current thumbnail_url_template: " + thumbnail_url_template)
+                        elif guess_thumbnail_url(stream.user_name, thumbnail_url_template) != thumb:
+                            print("invalid thumbnail_url_template: " + thumbnail_url_template)
+                            invalid_thumbnail_url_templates.append(thumbnail_url_template)
+                            thumbnail_url_template = None
+                        if (not stream.user_name in live_info) and (len(cats) == 0 or stream.game_name in cats):
+                            url = "https://www.twitch.tv/" + stream.user_name
+                            live_info[stream.user_name] = LiveInfo(
+                                display=stream.user_name,
+                                user_name=stream.user_name,
+                                game_name=stream.game_name,
+                                title=stream.title,
+                                url=url,
+                                thumbnail_url=thumb,
+                            )
+                except twitchAPI.type.TwitchBackendException as e:
+                    hadTwitchBackendException = True
+                    print("Twitch API Server Error in TwitchListen")
+                    traceback.print_exception(e)
                 dcms = {}
                 try:
                     async for m in dc.history():
@@ -178,9 +184,10 @@ class MatoStreamshow(discord.Client):
                     print("  Server name: " + d["name"])
                     print("  Channel id: " + str(dc_id))
                     traceback.print_exception(e)
-                for name, dcm in dcms.items():
-                    if not name in live_info:
-                        await dcm.delete()
+                if not hadTwitchBackendException:
+                    for name, dcm in dcms.items():
+                        if not name in live_info:
+                            await dcm.delete()
         except discord.DiscordServerError as e:
             print("Discord Server Error in TwitchListen")
             traceback.print_exception(e)
