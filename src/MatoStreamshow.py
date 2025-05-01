@@ -471,14 +471,28 @@ async def twitch_category_add(interaction: discord.Interaction, twitch_category:
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
-    cap_l = d["twitch_category_list"]
-    if twitch_category in cap_l:
+    twitch_category_list = d["twitch_category_list"]
+    if twitch_category in twitch_category_list:
         await interaction.response.send_message("Already contains " + plain(twitch_category))
     else:
-        cap_l.append(twitch_category)
-        cap_l.sort(key=str.casefold)
-        save.save()
-        await interaction.response.send_message("Added " + plain(twitch_category))
+        game_name = None
+        try:
+            games = api.get_games(names=[twitch_category])
+            async for game in games:
+                game_name = game.name
+                break
+        except twitchAPI.type.TwitchBackendException as e:
+            print("Twitch API Server Error in twitch-category-add")
+            traceback.print_exception(e)
+            await interaction.response.send_message("Twitch API Server Error: please try again later")
+            return
+        if game_name == None:
+            await interaction.response.send_message(code(repr(twitch_category)) + " is not a valid twitch category")
+        else:
+            twitch_category_list.append(game_name)
+            twitch_category_list.sort(key=str.casefold)
+            save.save()
+            await interaction.response.send_message("Added " + plain(game_name))
 
 @bot.tree.command(name="twitch-category-remove")
 @app_commands.default_permissions(manage_roles=True)
