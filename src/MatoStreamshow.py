@@ -97,17 +97,14 @@ class MatoStreamshow(discord.Client):
         try:
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
-                server_live_infoss[g] = {}
-                server_live_infos = server_live_infoss[g]
-                l = d["twitch_streamer_list"]
-                lower_l = [u.casefold() for u in l]
-                cats = d["twitch_category_list"]
                 dc_id = d["channel_id"]
-                dsr_id = d["streamer_role_id"]
-                dlr_id = d["live_role_id"]
                 if not (dc_id and dc_id != 0):
                     continue
-                dc = bot.get_channel(dc_id)
+                l = d["twitch_streamer_list"]
+                dsr_id = d["streamer_role_id"]
+                dlr_id = d["live_role_id"]
+                server_live_infoss[g] = {}
+                server_live_infos = server_live_infoss[g]
                 streamer_members = set()
                 live_members = set()
                 if dsr_id and dsr_id != 0:
@@ -143,8 +140,17 @@ class MatoStreamshow(discord.Client):
                         except discord.Forbidden as e:
                             print("MatoStreamshow needs permission to manage the live role")
                             traceback.print_exception(e)
-                hadTwitchBackendException = False
-                try:
+            hadTwitchBackendException = False
+            try:
+                for g in save.get_guild_ids():
+                    d = save.get_guild_data(g)
+                    dc_id = d["channel_id"]
+                    if not (dc_id and dc_id != 0):
+                        continue
+                    server_live_infos = server_live_infoss[g]
+                    l = d["twitch_streamer_list"]
+                    lower_l = [u.casefold() for u in l]
+                    cats = d["twitch_category_list"]
                     streams = api.get_streams(stream_type="live", user_login=lower_l, first=100)
                     async for stream in streams:
                         thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
@@ -172,11 +178,16 @@ class MatoStreamshow(discord.Client):
                                 display_avatar=None,
                                 has_streamer_role=False,
                             )
-                except twitchAPI.type.TwitchBackendException as e:
-                    hadTwitchBackendException = True
-                    print("Twitch API Server Error in TwitchListen")
-                    traceback.print_exception(e)
-                try:
+            except twitchAPI.type.TwitchBackendException as e:
+                hadTwitchBackendException = True
+                print("Twitch API Server Error in TwitchListen")
+                traceback.print_exception(e)
+            try:
+                for g in save.get_guild_ids():
+                    dc_id = d["channel_id"]
+                    if not (dc_id and dc_id != 0):
+                        continue
+                    server_live_infos = server_live_infoss[g]
                     unknowns = [u for u, i in server_live_infos.items() if i.display_avatar == None]
                     if 1 <= len(unknowns):
                         users = api.get_users(logins=unknowns)
@@ -184,10 +195,18 @@ class MatoStreamshow(discord.Client):
                             lower_name = user.login.casefold()
                             server_info = server_live_infos[lower_name]
                             server_live_infos[lower_name] = server_info._replace(display_avatar=user.profile_image_url)
-                except twitchAPI.type.TwitchBackendException as e:
-                    hadTwitchBackendException = True
-                    print("Twitch API Server Error in TwitchListen")
-                    traceback.print_exception(e)
+            except twitchAPI.type.TwitchBackendException as e:
+                hadTwitchBackendException = True
+                print("Twitch API Server Error in TwitchListen")
+                traceback.print_exception(e)
+            for g in save.get_guild_ids():
+                d = save.get_guild_data(g)
+                dc_id = d["channel_id"]
+                if not (dc_id and dc_id != 0):
+                    continue
+                l = d["twitch_streamer_list"]
+                server_live_infos = server_live_infoss[g]
+                dc = bot.get_channel(dc_id)
                 dcms = {}
                 try:
                     async for m in dc.history():
