@@ -393,17 +393,17 @@ async def twitch_streamer_add(interaction: discord.Interaction, twitch_username:
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
-    cap_l = d["twitch_streamer_list"]
+    twitch_streamer_list = d["twitch_streamer_list"]
     tu = parse_twitch_username(twitch_username)
     if tu == None:
         await interaction.response.send_message(code(repr(twitch_username)) + " is not a valid twitch username")
-    elif tu in cap_l:
-        await interaction.response.send_message("Already contains " + plain(tu))
-    elif 100 <= len(cap_l):
+    elif tu.casefold() in (s.casefold() for s in twitch_streamer_list):
+        await interaction.response.send_message("Already contains " + plain(recover_case(tu, twitch_streamer_list)))
+    elif 100 <= len(twitch_streamer_list):
         await interaction.response.send_message("You can only specify up to 100 names (Twitch API constraint)")
     else:
-        cap_l.append(tu)
-        cap_l.sort(key=str.casefold)
+        twitch_streamer_list.append(tu)
+        twitch_streamer_list.sort(key=str.casefold)
         save.save()
         await interaction.response.send_message("Added " + plain(tu))
 
@@ -466,14 +466,14 @@ async def twitch_category_add(interaction: discord.Interaction, twitch_category:
     interaction : discord.Interaction
         The interaction object.
     twitch_category : str
-        The category ???.
+        The category to add to the filter.
     """
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
     twitch_category_list = d["twitch_category_list"]
-    if twitch_category in twitch_category_list:
-        await interaction.response.send_message("Already contains " + plain(twitch_category))
+    if twitch_category.casefold() in (c.casefold() for c in twitch_category_list):
+        await interaction.response.send_message("Already contains " + plain(recover_case(twitch_category, twitch_category_list)))
     else:
         game_name = None
         try:
@@ -506,7 +506,7 @@ async def twitch_category_remove(interaction: discord.Interaction, twitch_catego
     interaction : discord.Interaction
         The interaction object.
     twitch_category : str
-        The category ???.
+        The category to remove from the filter.
     """
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
