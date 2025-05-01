@@ -100,7 +100,7 @@ class MatoStreamshow(discord.Client):
                 dc_id = d["channel_id"]
                 if not (dc_id and dc_id != 0):
                     continue
-                l = d["twitch_streamer_list"]
+                cap_l = d["twitch_streamer_list"]
                 dsr_id = d["streamer_role_id"]
                 dlr_id = d["live_role_id"]
                 server_live_infoss[g] = {}
@@ -117,7 +117,7 @@ class MatoStreamshow(discord.Client):
                             if isinstance(a, discord.Streaming) and a.platform == "Twitch":
                                 live_members.add(m)
                                 lower_name = a.twitch_name.casefold()
-                                user_name = recover_case(a.twitch_name, l)
+                                user_name = recover_case(a.twitch_name, cap_l)
                                 global_live_infos[lower_name] = GlobalLiveInfo(
                                     game_name=a.game,
                                     title=a.name,
@@ -148,8 +148,8 @@ class MatoStreamshow(discord.Client):
                     if not (dc_id and dc_id != 0):
                         continue
                     server_live_infos = server_live_infoss[g]
-                    l = d["twitch_streamer_list"]
-                    lower_l = [u.casefold() for u in l]
+                    cap_l = d["twitch_streamer_list"]
+                    lower_l = [u.casefold() for u in cap_l]
                     cats = d["twitch_category_list"]
                     streams = api.get_streams(stream_type="live", user_login=lower_l, first=100)
                     async for stream in streams:
@@ -174,7 +174,7 @@ class MatoStreamshow(discord.Client):
                             )
                         if (not lower_name is server_live_infos) and (len(cats) == 0 or stream.game_name in cats):
                             server_live_infos[lower_name] = ServerLiveInfo(
-                                display_name=recover_case(stream.user_name, l),
+                                display_name=recover_case(stream.user_name, cap_l),
                                 display_avatar=None,
                                 has_streamer_role=False,
                             )
@@ -204,7 +204,7 @@ class MatoStreamshow(discord.Client):
                 dc_id = d["channel_id"]
                 if not (dc_id and dc_id != 0):
                     continue
-                l = d["twitch_streamer_list"]
+                cap_l = d["twitch_streamer_list"]
                 server_live_infos = server_live_infoss[g]
                 dc = bot.get_channel(dc_id)
                 dcms = {}
@@ -222,7 +222,7 @@ class MatoStreamshow(discord.Client):
                     traceback.print_exception(e)
                 try:
                     for name, server_info in server_live_infos.items():
-                        cap_name = recover_case(name, l)
+                        cap_name = recover_case(name, cap_l)
                         global_info = global_live_infos[name]
                         plain_game = plain(global_info.game_name)
                         text = "**" + plain(server_info.display_name) + "** is live! Playing " + plain_game
@@ -372,9 +372,9 @@ async def twitch_streamer_list(interaction: discord.Interaction):
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
-    l = d["twitch_streamer_list"]
+    cap_l = d["twitch_streamer_list"]
     save.save()
-    await interaction.response.send_message(codeblock(repr(l), language="python"))
+    await interaction.response.send_message(codeblock(repr(cap_l), language="python"))
 
 @bot.tree.command(name="twitch-streamer-add")
 @app_commands.default_permissions(manage_roles=True)
@@ -393,17 +393,17 @@ async def twitch_streamer_add(interaction: discord.Interaction, twitch_username:
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
-    l = d["twitch_streamer_list"]
+    cap_l = d["twitch_streamer_list"]
     tu = parse_twitch_username(twitch_username)
     if tu == None:
         await interaction.response.send_message(code(repr(twitch_username)) + " is not a valid twitch username")
-    elif tu in l:
+    elif tu in cap_l:
         await interaction.response.send_message("Already contains " + plain(tu))
-    elif 100 <= len(l):
+    elif 100 <= len(cap_l):
         await interaction.response.send_message("You can only specify up to 100 names (Twitch API constraint)")
     else:
-        l.append(tu)
-        l.sort(key=str.casefold)
+        cap_l.append(tu)
+        cap_l.sort(key=str.casefold)
         save.save()
         await interaction.response.send_message("Added " + plain(tu))
 
@@ -424,12 +424,12 @@ async def twitch_streamer_remove(interaction: discord.Interaction, twitch_userna
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
-    l = d["twitch_streamer_list"]
+    cap_l = d["twitch_streamer_list"]
     tu = parse_twitch_username(twitch_username)
     if tu == None:
         await interaction.response.send_message(code(repr(twitch_username)) + " is not a valid twitch username")
-    elif tu in l:
-        l.remove(tu)
+    elif tu in cap_l:
+        cap_l.remove(tu)
         save.save()
         await interaction.response.send_message("Removed " + plain(tu))
     else:
@@ -450,9 +450,9 @@ async def twitch_category_list(interaction: discord.Interaction):
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
-    l = d["twitch_category_list"]
+    cap_l = d["twitch_category_list"]
     save.save()
-    await interaction.response.send_message(codeblock(repr(l), language="python"))
+    await interaction.response.send_message(codeblock(repr(cap_l), language="python"))
 
 @bot.tree.command(name="twitch-category-add")
 @app_commands.default_permissions(manage_roles=True)
@@ -471,12 +471,12 @@ async def twitch_category_add(interaction: discord.Interaction, twitch_category:
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
-    l = d["twitch_category_list"]
-    if twitch_category in l:
+    cap_l = d["twitch_category_list"]
+    if twitch_category in cap_l:
         await interaction.response.send_message("Already contains " + plain(twitch_category))
     else:
-        l.append(twitch_category)
-        l.sort(key=str.casefold)
+        cap_l.append(twitch_category)
+        cap_l.sort(key=str.casefold)
         save.save()
         await interaction.response.send_message("Added " + plain(twitch_category))
 
@@ -497,9 +497,9 @@ async def twitch_category_remove(interaction: discord.Interaction, twitch_catego
     if interaction.guild is None: return
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
-    l = d["twitch_category_list"]
-    if twitch_category in l:
-        l.remove(twitch_category)
+    cap_l = d["twitch_category_list"]
+    if twitch_category in cap_l:
+        cap_l.remove(twitch_category)
         save.save()
         await interaction.response.send_message("Removed " + plain(twitch_category))
     else:
