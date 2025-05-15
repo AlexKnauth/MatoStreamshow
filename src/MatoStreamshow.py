@@ -165,14 +165,14 @@ class MatoStreamshow(discord.Client):
                             thumbnail_url_template = None
                         url = "https://www.twitch.tv/" + stream.user_name
                         lower_name = stream.user_name.casefold()
-                        if not lower_name is global_live_infos:
+                        if not lower_name in global_live_infos:
                             global_live_infos[lower_name] = GlobalLiveInfo(
                                 game_name=stream.game_name,
                                 title=stream.title,
                                 url=url,
                                 thumbnail_url=thumb,
                             )
-                        if (not lower_name is server_live_infos) and (len(cats) == 0 or stream.game_name in cats):
+                        if (not lower_name in server_live_infos) and (len(cats) == 0 or stream.game_name in cats):
                             server_live_infos[lower_name] = ServerLiveInfo(
                                 display_name=recover_case(stream.user_name, cap_l),
                                 display_avatar=None,
