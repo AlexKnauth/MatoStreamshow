@@ -146,7 +146,6 @@ class MatoStreamshow(discord.Client):
                     dc_id = d["channel_id"]
                     if not (dc_id and dc_id != 0):
                         continue
-                    server_live_infos = server_live_infoss[g]
                     cap_l = d["twitch_streamer_list"]
                     lower_l = [u.casefold() for u in cap_l]
                     cats = d["twitch_category_list"]
@@ -171,16 +170,28 @@ class MatoStreamshow(discord.Client):
                                 url=url,
                                 thumbnail_url=thumb,
                             )
-                        if (not lower_name in server_live_infos) and (len(cats) == 0 or stream.game_name in cats):
-                            server_live_infos[lower_name] = ServerLiveInfo(
-                                display_name=recover_case(stream.user_name, cap_l),
-                                display_avatar=None,
-                                has_streamer_role=False,
-                            )
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
                 print("Twitch API Server Error in TwitchListen")
                 traceback.print_exception(e)
+            for g in save.get_guild_ids():
+                d = save.get_guild_data(g)
+                dc_id = d["channel_id"]
+                if not (dc_id and dc_id != 0):
+                    continue
+                server_live_infos = server_live_infoss[g]
+                cap_l = d["twitch_streamer_list"]
+                cats = d["twitch_category_list"]
+                for cap_name in cap_l:
+                    lower_name = cap_name.casefold()
+                    if lower_name in global_live_infos:
+                        stream = global_live_infos[lower_name]
+                        if (not lower_name in server_live_infos) and (len(cats) == 0 or stream.game_name in cats):
+                            server_live_infos[lower_name] = ServerLiveInfo(
+                                display_name=cap_name,
+                                display_avatar=None,
+                                has_streamer_role=False,
+                            )
             try:
                 for g in save.get_guild_ids():
                     dc_id = d["channel_id"]
