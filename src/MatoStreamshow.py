@@ -117,7 +117,6 @@ class MatoStreamshow(discord.Client):
                             if isinstance(a, discord.Streaming) and a.platform == "Twitch":
                                 live_members.add(m)
                                 lower_name = a.twitch_name.casefold()
-                                user_name = recover_case(a.twitch_name, cap_l)
                                 global_live_infos[lower_name] = GlobalLiveInfo(
                                     game_name=a.game,
                                     title=a.name,
