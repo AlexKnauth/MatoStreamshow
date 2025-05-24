@@ -21,7 +21,7 @@ if (not config.twitch_api_secret) or config.twitch_api_secret == "":
 
 # Twitch info processing
 
-GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thumbnail_url'])
+GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thumbnail_url', 'profile_image_url'])
 
 ServerLiveInfo = namedtuple('ServerLiveInfo', ['display_name', 'display_avatar', 'has_streamer_role'])
 
@@ -123,6 +123,7 @@ class MatoStreamshow(discord.Client):
                                     title=a.name,
                                     url=a.url,
                                     thumbnail_url=None,
+                                    profile_image_url=None,
                                 )
                                 server_live_infos[lower_name] = ServerLiveInfo(
                                     display_name=m.display_name,
@@ -171,6 +172,7 @@ class MatoStreamshow(discord.Client):
                                 title=stream.title,
                                 url=url,
                                 thumbnail_url=thumb,
+                                profile_image_url=None,
                             )
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
@@ -194,19 +196,21 @@ class MatoStreamshow(discord.Client):
                                 display_avatar=None,
                                 has_streamer_role=False,
                             )
+            avatar_unknowns = set()
+            for g in save.get_guild_ids():
+                d = save.get_guild_data(g)
+                dc_id = d["channel_id"]
+                if not (dc_id and dc_id != 0):
+                    continue
+                server_live_infos = server_live_infoss[g]
+                avatar_unknowns.update((u for u, i in server_live_infos.items() if i.display_avatar == None))
             try:
-                for g in save.get_guild_ids():
-                    dc_id = d["channel_id"]
-                    if not (dc_id and dc_id != 0):
-                        continue
-                    server_live_infos = server_live_infoss[g]
-                    unknowns = [u for u, i in server_live_infos.items() if i.display_avatar == None]
-                    if 1 <= len(unknowns):
-                        users = api.get_users(logins=unknowns)
-                        async for user in users:
-                            lower_name = user.login.casefold()
-                            server_info = server_live_infos[lower_name]
-                            server_live_infos[lower_name] = server_info._replace(display_avatar=user.profile_image_url)
+                for batch in itertools.batched(avatar_unknowns, 100):
+                    users = api.get_users(logins=list(batch))
+                    async for user in users:
+                        lower_name = user.login.casefold()
+                        global_info = global_live_infos[lower_name]
+                        global_live_infos[lower_name] = global_info._replace(profile_image_url=user.profile_image_url)
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
                 print("Twitch API Server Error in TwitchListen")
@@ -240,16 +244,17 @@ class MatoStreamshow(discord.Client):
                         text = "**" + plain(server_info.display_name) + "** is live! Playing " + plain_game
                         title = plain(global_info.title)
                         thumb = global_info.thumbnail_url or guess_thumbnail_url(name, thumbnail_url_template)
+                        icon = server_info.display_avatar or global_info.profile_image_url
                         if name in dcms:
                             m = dcms[name]
                             if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
                                 embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url, description=plain_game)
-                                embed.set_author(name=cap_name, url=global_info.url, icon_url=server_info.display_avatar)
+                                embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
                                 embed.set_thumbnail(url=thumb)
                                 await m.edit(content=text, embed=embed)
                         else:
                             embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url, description=plain_game)
-                            embed.set_author(name=cap_name, url=global_info.url, icon_url=server_info.display_avatar)
+                            embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
                             embed.set_thumbnail(url=thumb)
                             await dc.send(text, embed=embed)
                 except discord.Forbidden as e:
