@@ -3,6 +3,7 @@ import config
 import discord
 from discord import app_commands
 from discord.ext.tasks import loop
+import itertools
 import re
 import save
 import traceback
@@ -139,18 +140,18 @@ class MatoStreamshow(discord.Client):
                         except discord.Forbidden as e:
                             print("MatoStreamshow needs permission to manage the live role")
                             traceback.print_exception(e)
+            lower_set_all = set()
+            for g in save.get_guild_ids():
+                d = save.get_guild_data(g)
+                dc_id = d["channel_id"]
+                if not (dc_id and dc_id != 0):
+                    continue
+                cap_l = d["twitch_streamer_list"]
+                lower_set_all.update((u.casefold() for u in cap_l))
             hadTwitchBackendException = False
             try:
-                for g in save.get_guild_ids():
-                    d = save.get_guild_data(g)
-                    dc_id = d["channel_id"]
-                    if not (dc_id and dc_id != 0):
-                        continue
-                    server_live_infos = server_live_infoss[g]
-                    cap_l = d["twitch_streamer_list"]
-                    lower_l = [u.casefold() for u in cap_l]
-                    cats = d["twitch_category_list"]
-                    streams = api.get_streams(stream_type="live", user_login=lower_l, first=100)
+                for batch in itertools.batched(lower_set_all, 100):
+                    streams = api.get_streams(stream_type="live", user_login=list(batch), first=100)
                     async for stream in streams:
                         thumb = stream.thumbnail_url.replace("{width}", "320").replace("{height}", "180")
                         if not thumbnail_url_template:
@@ -171,16 +172,28 @@ class MatoStreamshow(discord.Client):
                                 url=url,
                                 thumbnail_url=thumb,
                             )
-                        if (not lower_name in server_live_infos) and (len(cats) == 0 or stream.game_name in cats):
-                            server_live_infos[lower_name] = ServerLiveInfo(
-                                display_name=recover_case(stream.user_name, cap_l),
-                                display_avatar=None,
-                                has_streamer_role=False,
-                            )
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
                 print("Twitch API Server Error in TwitchListen")
                 traceback.print_exception(e)
+            for g in save.get_guild_ids():
+                d = save.get_guild_data(g)
+                dc_id = d["channel_id"]
+                if not (dc_id and dc_id != 0):
+                    continue
+                server_live_infos = server_live_infoss[g]
+                cap_l = d["twitch_streamer_list"]
+                cats = d["twitch_category_list"]
+                for cap_name in cap_l:
+                    lower_name = cap_name.casefold()
+                    if lower_name in global_live_infos:
+                        stream = global_live_infos[lower_name]
+                        if (not lower_name in server_live_infos) and (len(cats) == 0 or stream.game_name in cats):
+                            server_live_infos[lower_name] = ServerLiveInfo(
+                                display_name=cap_name,
+                                display_avatar=None,
+                                has_streamer_role=False,
+                            )
             try:
                 for g in save.get_guild_ids():
                     dc_id = d["channel_id"]
