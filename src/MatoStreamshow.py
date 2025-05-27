@@ -1,4 +1,6 @@
 from collections import namedtuple
+
+import aiohttp
 import config
 import discord
 from discord import app_commands
@@ -268,6 +270,9 @@ class MatoStreamshow(discord.Client):
                             await dcm.delete()
         except discord.DiscordServerError as e:
             print("Discord Server Error in TwitchListen")
+            traceback.print_exception(e)
+        except aiohttp.client_exceptions.ClientConnectorError as e:
+            print("Client Connector Error in TwitchListen")
             traceback.print_exception(e)
 
 intents = discord.Intents.default()
