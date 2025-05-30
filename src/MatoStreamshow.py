@@ -117,7 +117,6 @@ class MatoStreamshow(discord.Client):
                         streamer_members.add(m)
                     for m in streamer_members:
                         for a in m.activities:
-                            start = a.start
                             if isinstance(a, discord.Streaming) and a.platform == "Twitch":
                                 live_members.add(m)
                                 lower_name = a.twitch_name.casefold()
@@ -127,7 +126,7 @@ class MatoStreamshow(discord.Client):
                                     url=a.url,
                                     thumbnail_url=None,
                                     profile_image_url=None,
-                                    started_at=start,
+                                    started_at=a.created_at,
                                     game_image_url=None,
                                 )
                                 server_live_infos[lower_name] = ServerLiveInfo(
