@@ -23,7 +23,7 @@ if (not config.twitch_api_secret) or config.twitch_api_secret == "":
 
 # Twitch info processing
 
-GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thumbnail_url', 'profile_image_url', 'started_at'])
+GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thumbnail_url', 'profile_image_url', 'started_at', 'game_image_url'])
 
 ServerLiveInfo = namedtuple('ServerLiveInfo', ['display_name', 'display_avatar', 'has_streamer_role'])
 
@@ -128,6 +128,7 @@ class MatoStreamshow(discord.Client):
                                     thumbnail_url=None,
                                     profile_image_url=None,
                                     started_at=start,
+                                    game_image_url=None,
                                 )
                                 server_live_infos[lower_name] = ServerLiveInfo(
                                     display_name=m.display_name,
@@ -178,6 +179,7 @@ class MatoStreamshow(discord.Client):
                                 thumbnail_url=thumb,
                                 profile_image_url=None,
                                 started_at=stream.started_at,
+                                game_image_url=None,
                             )
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
@@ -220,6 +222,27 @@ class MatoStreamshow(discord.Client):
                 hadTwitchBackendException = True
                 print("Twitch API Server Error in TwitchListen")
                 traceback.print_exception(e)
+            game_image_unknowns = set()
+            game_images = {}
+            for global_info in global_live_infos.values():
+                if global_info.game_name in game_images:
+                    game_image_unknowns.remove(global_info.game_name)
+                elif global_info.game_name in game_image_unknowns:
+                    continue
+                elif global_info.game_image_url:
+                    game_images[global_info.game_name] = global_info.game_image_url
+                    game_image_unknowns.remove(global_info.game_name)
+                else:
+                    game_image_unknowns.add(global_info.game_name)
+            try:
+                for batch in itertools.batched(game_image_unknowns, 100):
+                    games = api.get_games(names=list(batch))
+                    async for game in games:
+                        game_images[game.name] = game.box_art_url.replace("{width}", "60").replace("{height}", "80")
+            except twitchAPI.type.TwitchBackendException as e:
+                hadTwitchBackendException = True
+                print("Twitch API Server Error in TwitchListen")
+                traceback.print_exception(e)
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
                 dc_id = d["channel_id"]
@@ -250,13 +273,14 @@ class MatoStreamshow(discord.Client):
                         title = plain(global_info.title)
                         thumb = global_info.thumbnail_url or guess_thumbnail_url(name, thumbnail_url_template)
                         icon = server_info.display_avatar or global_info.profile_image_url
+                        game_icon = global_info.game_image_url or game_images[global_info.game_name]
                         if name in dcms:
                             m = dcms[name]
                             if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
                                 embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
                                 embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
                                 embed.set_thumbnail(url=thumb)
-                                embed.set_footer(text=plain_game)
+                                embed.set_footer(text=plain_game, icon_url=game_icon)
                                 if global_info.started_at:
                                     embed.timestamp = global_info.started_at
                                 await m.edit(content=text, embed=embed)
@@ -264,7 +288,7 @@ class MatoStreamshow(discord.Client):
                             embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
                             embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
                             embed.set_thumbnail(url=thumb)
-                            embed.set_footer(text=plain_game)
+                            embed.set_footer(text=plain_game, icon_url=game_icon)
                             if global_info.started_at:
                                 embed.timestamp = global_info.started_at
                             await dc.send(text, embed=embed)
