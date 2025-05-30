@@ -23,7 +23,7 @@ if (not config.twitch_api_secret) or config.twitch_api_secret == "":
 
 # Twitch info processing
 
-GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thumbnail_url', 'profile_image_url'])
+GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thumbnail_url', 'profile_image_url', 'started_at'])
 
 ServerLiveInfo = namedtuple('ServerLiveInfo', ['display_name', 'display_avatar', 'has_streamer_role'])
 
@@ -108,8 +108,8 @@ class MatoStreamshow(discord.Client):
                 dlr_id = d["live_role_id"]
                 server_live_infoss[g] = {}
                 server_live_infos = server_live_infoss[g]
-                streamer_members = set()
-                live_members = set()
+                streamer_members: set[discord.Member] = set()
+                live_members: set[discord.Member] = set()
                 if dsr_id and dsr_id != 0:
                     guild = self.get_guild(int(g))
                     dsr = guild.get_role(dsr_id)
@@ -117,6 +117,7 @@ class MatoStreamshow(discord.Client):
                         streamer_members.add(m)
                     for m in streamer_members:
                         for a in m.activities:
+                            start = a.start
                             if isinstance(a, discord.Streaming) and a.platform == "Twitch":
                                 live_members.add(m)
                                 lower_name = a.twitch_name.casefold()
@@ -126,6 +127,7 @@ class MatoStreamshow(discord.Client):
                                     url=a.url,
                                     thumbnail_url=None,
                                     profile_image_url=None,
+                                    started_at=start,
                                 )
                                 server_live_infos[lower_name] = ServerLiveInfo(
                                     display_name=m.display_name,
@@ -175,6 +177,7 @@ class MatoStreamshow(discord.Client):
                                 url=url,
                                 thumbnail_url=thumb,
                                 profile_image_url=None,
+                                started_at=stream.started_at,
                             )
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
@@ -250,14 +253,20 @@ class MatoStreamshow(discord.Client):
                         if name in dcms:
                             m = dcms[name]
                             if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
-                                embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url, description=plain_game)
+                                embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
                                 embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
                                 embed.set_thumbnail(url=thumb)
+                                embed.set_footer(text=plain_game)
+                                if global_info.started_at:
+                                    embed.timestamp = global_info.started_at
                                 await m.edit(content=text, embed=embed)
                         else:
-                            embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url, description=plain_game)
+                            embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
                             embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
                             embed.set_thumbnail(url=thumb)
+                            embed.set_footer(text=plain_game)
+                            if global_info.started_at:
+                                embed.timestamp = global_info.started_at
                             await dc.send(text, embed=embed)
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to send messages in:")
