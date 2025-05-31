@@ -272,7 +272,7 @@ class MatoStreamshow(discord.Client):
                         title = plain(global_info.title)
                         thumb = global_info.thumbnail_url or guess_thumbnail_url(name, thumbnail_url_template)
                         icon = server_info.display_avatar or global_info.profile_image_url
-                        game_icon = global_info.game_image_url or (game_images[global_info.game_name] if global_info.game_name in game_images else None)
+                        game_icon = global_info.game_image_url or game_images.get(global_info.game_name)
                         if name in dcms:
                             m = dcms[name]
                             if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
