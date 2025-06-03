@@ -34,6 +34,12 @@ python src/MatoStreamshow.py
 If you get an error message about `ModuleNotFoundError: No module named 'audioop'`,
 you can fix that with `pip install audioop-lts`.
 
+If you get an error message about `AttributeError: module 'itertools' has no attribute 'batched'`,
+make sure you're on Python version 3.12 or later.
+
+If you get an error message about `ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate`,
+go to your Python installation folder and run `Install Certificates.command` there.
+
 ## Privacy Policy Questions & Answers
 
 > What data do you collect?
