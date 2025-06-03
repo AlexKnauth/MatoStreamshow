@@ -110,41 +110,43 @@ class MatoStreamshow(discord.Client):
                 server_live_infos = server_live_infoss[g]
                 streamer_members: set[discord.Member] = set()
                 live_members: set[discord.Member] = set()
-                if dsr_id and dsr_id != 0:
-                    guild = self.get_guild(int(g))
-                    dsr = guild.get_role(dsr_id)
-                    for m in dsr.members:
-                        streamer_members.add(m)
+                if not (dsr_id and dsr_id != 0):
+                    continue
+                guild = self.get_guild(int(g))
+                dsr = guild.get_role(dsr_id)
+                for m in dsr.members:
+                    streamer_members.add(m)
+                for m in streamer_members:
+                    for a in m.activities:
+                        if isinstance(a, discord.Streaming) and a.platform == "Twitch":
+                            live_members.add(m)
+                            lower_name = a.twitch_name.casefold()
+                            global_live_infos[lower_name] = GlobalLiveInfo(
+                                game_name=a.game,
+                                title=a.name,
+                                url=a.url,
+                                thumbnail_url=None,
+                                profile_image_url=None,
+                                started_at=a.created_at,
+                                game_image_url=None,
+                            )
+                            server_live_infos[lower_name] = ServerLiveInfo(
+                                display_name=m.display_name,
+                                display_avatar=m.display_avatar,
+                                has_streamer_role=True,
+                            )
+                if not (dlr_id and dlr_id != 0):
+                    continue
+                try:
+                    dlr = guild.get_role(dlr_id)
                     for m in streamer_members:
-                        for a in m.activities:
-                            if isinstance(a, discord.Streaming) and a.platform == "Twitch":
-                                live_members.add(m)
-                                lower_name = a.twitch_name.casefold()
-                                global_live_infos[lower_name] = GlobalLiveInfo(
-                                    game_name=a.game,
-                                    title=a.name,
-                                    url=a.url,
-                                    thumbnail_url=None,
-                                    profile_image_url=None,
-                                    started_at=a.created_at,
-                                    game_image_url=None,
-                                )
-                                server_live_infos[lower_name] = ServerLiveInfo(
-                                    display_name=m.display_name,
-                                    display_avatar=m.display_avatar,
-                                    has_streamer_role=True,
-                                )
-                    if dlr_id and dlr_id != 0:
-                        try:
-                            dlr = guild.get_role(dlr_id)
-                            for m in streamer_members:
-                                if m in live_members:
-                                    await m.add_roles(dlr, reason="Streaming Live")
-                                else:
-                                    await m.remove_roles(dlr, reason="Not Streaming Live")
-                        except discord.Forbidden as e:
-                            print("MatoStreamshow needs permission to manage the live role")
-                            traceback.print_exception(e)
+                        if m in live_members:
+                            await m.add_roles(dlr, reason="Streaming Live")
+                        else:
+                            await m.remove_roles(dlr, reason="Not Streaming Live")
+                except discord.Forbidden as e:
+                    print("MatoStreamshow needs permission to manage the live role")
+                    traceback.print_exception(e)
             lower_set_all = set()
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
