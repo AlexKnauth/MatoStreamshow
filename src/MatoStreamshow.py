@@ -27,6 +27,9 @@ GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thu
 
 ServerLiveInfo = namedtuple('ServerLiveInfo', ['display_name', 'display_avatar', 'has_streamer_role'])
 
+global_live_infos: dict[str, GlobalLiveInfo] = {}
+server_live_infoss: dict[str, dict[str, ServerLiveInfo]] = {}
+
 def parse_twitch_username(s: str) -> str | None:
     m = re.search(r"\s*(.*@|.*twitch.tv/)?(\w+)\s*", s)
     return m and m.group(2)
@@ -95,8 +98,10 @@ class MatoStreamshow(discord.Client):
     @loop(minutes=1)
     async def TwitchListen(self):
         global thumbnail_url_template
-        global_live_infos: dict[str, GlobalLiveInfo] = {}
-        server_live_infoss: dict[str, dict[str, ServerLiveInfo]] = {}
+        global global_live_infos
+        global server_live_infoss
+        global_valid_keys: set[str] = set()
+        server_valid_keyss: dict[str, set[str]] = {}
         try:
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
@@ -108,6 +113,8 @@ class MatoStreamshow(discord.Client):
                 dlr_id = d["live_role_id"]
                 server_live_infoss[g] = {}
                 server_live_infos = server_live_infoss[g]
+                server_valid_keyss[g] = set()
+                server_valid_keys = server_valid_keyss[g]
                 streamer_members: set[discord.Member] = set()
                 live_members: set[discord.Member] = set()
                 if not (dsr_id and dsr_id != 0):
@@ -135,6 +142,8 @@ class MatoStreamshow(discord.Client):
                                 display_avatar=m.display_avatar,
                                 has_streamer_role=True,
                             )
+                            global_valid_keys.add(lower_name)
+                            server_valid_keys.add(lower_name)
                 if not (dlr_id and dlr_id != 0):
                     continue
                 try:
@@ -172,7 +181,7 @@ class MatoStreamshow(discord.Client):
                             thumbnail_url_template = None
                         url = "https://www.twitch.tv/" + stream.user_name
                         lower_name = stream.user_name.casefold()
-                        if not lower_name in global_live_infos:
+                        if not lower_name in global_valid_keys:
                             global_live_infos[lower_name] = GlobalLiveInfo(
                                 game_name=stream.game_name,
                                 title=stream.title,
@@ -182,28 +191,39 @@ class MatoStreamshow(discord.Client):
                                 started_at=stream.started_at,
                                 game_image_url=None,
                             )
+                            global_valid_keys.add(lower_name)
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
                 print("Twitch API Server Error in TwitchListen")
                 traceback.print_exception(e)
+            if not hadTwitchBackendException:
+                for lower_name in set(global_live_infos.keys()):
+                    if not lower_name in global_valid_keys:
+                        global_live_infos.pop(lower_name)
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
                 dc_id = d["channel_id"]
                 if not (dc_id and dc_id != 0):
                     continue
                 server_live_infos = server_live_infoss[g]
+                server_valid_keys = server_valid_keyss[g]
                 cap_l = d["twitch_streamer_list"]
                 cats = d["twitch_category_list"]
                 for cap_name in cap_l:
                     lower_name = cap_name.casefold()
-                    if lower_name in global_live_infos:
+                    if lower_name in global_valid_keys:
                         stream = global_live_infos[lower_name]
-                        if (not lower_name in server_live_infos) and (len(cats) == 0 or stream.game_name in cats):
+                        if (not lower_name in server_valid_keys) and (len(cats) == 0 or stream.game_name in cats):
                             server_live_infos[lower_name] = ServerLiveInfo(
                                 display_name=cap_name,
                                 display_avatar=None,
                                 has_streamer_role=False,
                             )
+                            server_valid_keys.add(lower_name)
+                if not hadTwitchBackendException:
+                    for lower_name in set(server_live_infos.keys()):
+                        if not lower_name in server_valid_keys:
+                            server_live_infos.pop(lower_name)
             avatar_unknowns = set()
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
