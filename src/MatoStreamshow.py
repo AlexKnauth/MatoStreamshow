@@ -156,7 +156,7 @@ class MatoStreamshow(discord.Client):
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to manage the live role")
                     traceback.print_exception(e)
-            lower_set_all = set()
+            lower_set_all: set[str] = set()
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
                 dc_id = d["channel_id"]
@@ -192,14 +192,13 @@ class MatoStreamshow(discord.Client):
                                 game_image_url=None,
                             )
                             global_valid_keys.add(lower_name)
+                    for lower_name in batch:
+                        if not lower_name in global_valid_keys:
+                            global_live_infos.pop(lower_name, None)
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
                 print("Twitch API Server Error in TwitchListen")
                 traceback.print_exception(e)
-            if not hadTwitchBackendException:
-                for lower_name in set(global_live_infos.keys()):
-                    if not lower_name in global_valid_keys:
-                        global_live_infos.pop(lower_name)
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
                 dc_id = d["channel_id"]
@@ -223,7 +222,7 @@ class MatoStreamshow(discord.Client):
                 if not hadTwitchBackendException:
                     for lower_name in set(server_live_infos.keys()):
                         if not lower_name in server_valid_keys:
-                            server_live_infos.pop(lower_name)
+                            server_live_infos.pop(lower_name, None)
             avatar_unknowns = set()
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
