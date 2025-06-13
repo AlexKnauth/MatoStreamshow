@@ -154,7 +154,9 @@ class MatoStreamshow(discord.Client):
                         else:
                             await m.remove_roles(dlr, reason="Not Streaming Live")
                 except discord.Forbidden as e:
-                    print("MatoStreamshow needs permission to manage the live role")
+                    print("MatoStreamshow needs permission to manage the live role in:")
+                    print("  Server name: " + d["name"])
+                    print("  Role id: " + str(dlr_id))
                     traceback.print_exception(e)
             lower_set_all: set[str] = set()
             for g in save.get_guild_ids():
@@ -282,7 +284,9 @@ class MatoStreamshow(discord.Client):
                             else:
                                 dcms[name] = m
                 except discord.Forbidden as e:
-                    print("MatoStreamshow needs permission to read message history")
+                    print("MatoStreamshow needs permission to read message history in:")
+                    print("  Server name: " + d["name"])
+                    print("  Channel id: " + str(dc_id))
                     traceback.print_exception(e)
                 try:
                     for name, server_info in server_live_infos.items():
