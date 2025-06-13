@@ -150,9 +150,11 @@ class MatoStreamshow(discord.Client):
                     dlr = guild.get_role(dlr_id)
                     for m in streamer_members:
                         if m in live_members:
-                            await m.add_roles(dlr, reason="Streaming Live")
+                            if not m.get_role(dlr_id):
+                                await m.add_roles(dlr, reason="Streaming Live")
                         else:
-                            await m.remove_roles(dlr, reason="Not Streaming Live")
+                            if m.get_role(dlr_id):
+                                await m.remove_roles(dlr, reason="Not Streaming Live")
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to manage the live role in:")
                     print("  Server name: " + d["name"])
