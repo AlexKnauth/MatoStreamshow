@@ -281,8 +281,9 @@ class MatoStreamshow(discord.Client):
                         if m.author.id == self.user.id and 1 <= len(m.embeds):
                             name = m.embeds[0].author.name.casefold()
                             if name in dcms:
-                                # ** there can only be one! **
-                                await m.delete()
+                                if dcms[name].id != m.id:
+                                    # ** there can only be one! **
+                                    await m.delete()
                             else:
                                 dcms[name] = m
                 except discord.Forbidden as e:
@@ -309,7 +310,7 @@ class MatoStreamshow(discord.Client):
                                 embed.set_footer(text=plain_game, icon_url=game_icon)
                                 if global_info.started_at:
                                     embed.timestamp = global_info.started_at
-                                await m.edit(content=text, embed=embed)
+                                dcms[name] = await m.edit(content=text, embed=embed)
                         else:
                             embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
                             embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
@@ -317,16 +318,17 @@ class MatoStreamshow(discord.Client):
                             embed.set_footer(text=plain_game, icon_url=game_icon)
                             if global_info.started_at:
                                 embed.timestamp = global_info.started_at
-                            await dc.send(text, embed=embed)
+                            dcms[name] = await dc.send(text, embed=embed)
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to send messages in:")
                     print("  Server name: " + d["name"])
                     print("  Channel id: " + str(dc_id))
                     traceback.print_exception(e)
                 if not hadTwitchBackendException:
-                    for name, dcm in dcms.items():
+                    for name in set(dcms.keys()):
                         if not name in server_live_infos:
-                            await dcm.delete()
+                            await dcms[name].delete()
+                            dcms.pop(name, None)
         except discord.DiscordServerError as e:
             print("Discord Server Error in TwitchListen")
             traceback.print_exception(e)
