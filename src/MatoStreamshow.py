@@ -149,6 +149,7 @@ class MatoStreamshow(discord.Client):
                             )
                             global_valid_keys.add(lower_name)
                             server_valid_keys.add(lower_name)
+                            break
                 if not (dlr_id and dlr_id != 0):
                     continue
                 try:
@@ -316,6 +317,66 @@ class MatoStreamshow(discord.Client):
         except aiohttp.client_exceptions.ClientConnectorError as e:
             print("Client Connector Error in TwitchListen")
             traceback.print_exception(e)
+
+    async def on_presence_update(self, _: discord.Member, m: discord.Member):
+        global global_live_infos
+        global global_game_images
+        global server_live_infoss
+        guild = m.guild
+        g = str(guild.id)
+        d = save.get_guild_data(g)
+        dc_id = d["channel_id"]
+        if not (dc_id and dc_id != 0):
+            return
+        dsr_id = d["streamer_role_id"]
+        if not (dsr_id and dsr_id != 0):
+            return
+        if not m.get_role(dsr_id):
+            return
+        if not g in server_live_infoss:
+            server_live_infoss[g] = {}
+        server_live_infos = server_live_infoss[g]
+        is_live = False
+        lower_name = None
+        for a in m.activities:
+            if isinstance(a, discord.Streaming) and a.platform == "Twitch":
+                is_live = True
+                lower_name = a.twitch_name.casefold()
+                thumb = None
+                profile_image = None
+                if lower_name in global_live_infos:
+                    global_info = global_live_infos[lower_name]
+                    thumb = global_info.thumbnail_url
+                    profile_image = global_info.profile_image_url
+                global_live_infos[lower_name] = GlobalLiveInfo(
+                    game_name=a.game,
+                    title=a.name,
+                    url=a.url,
+                    thumbnail_url=thumb,
+                    profile_image_url=profile_image,
+                    started_at=a.created_at,
+                    game_image_url=global_game_images.get(a.game),
+                )
+                server_live_infos[lower_name] = ServerLiveInfo(
+                    display_name=m.display_name,
+                    display_avatar=m.display_avatar,
+                    has_streamer_role=True,
+                )
+                break
+        if not is_live:
+            return
+        dlr_id = d["live_role_id"]
+        if dlr_id and dlr_id != 0:
+            try:
+                if not m.get_role(dlr_id):
+                    dlr = guild.get_role(dlr_id)
+                    await m.add_roles(dlr, reason="Streaming Live")
+            except discord.Forbidden as e:
+                print("MatoStreamshow needs permission to manage the live role in:")
+                print("  Server name: " + d["name"])
+                print("  Role id: " + str(dlr_id))
+                traceback.print_exception(e)
+        await ensure_message(g, lower_name)
 
 async def ensure_message(g, name):
     global thumbnail_url_template
