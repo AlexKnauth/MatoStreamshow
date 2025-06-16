@@ -28,6 +28,7 @@ GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thu
 ServerLiveInfo = namedtuple('ServerLiveInfo', ['display_name', 'display_avatar', 'has_streamer_role'])
 
 global_live_infos: dict[str, GlobalLiveInfo] = {}
+global_game_images: dict[str, str] = {}
 server_live_infoss: dict[str, dict[str, ServerLiveInfo]] = {}
 server_channel_msgss: dict[str, dict[str, discord.Message]] = {}
 
@@ -100,6 +101,7 @@ class MatoStreamshow(discord.Client):
     async def TwitchListen(self):
         global thumbnail_url_template
         global global_live_infos
+        global global_game_images
         global server_live_infoss
         global server_channel_msgss
         global_valid_keys: set[str] = set()
@@ -250,22 +252,21 @@ class MatoStreamshow(discord.Client):
                 print("Twitch API Server Error in TwitchListen")
                 traceback.print_exception(e)
             game_image_unknowns = set()
-            game_images = {}
             for global_info in global_live_infos.values():
-                if global_info.game_name in game_images:
-                    game_image_unknowns.remove(global_info.game_name)
+                if global_info.game_name in global_game_images:
+                    game_image_unknowns.discard(global_info.game_name)
                 elif global_info.game_name in game_image_unknowns:
                     continue
                 elif global_info.game_image_url:
-                    game_images[global_info.game_name] = global_info.game_image_url
-                    game_image_unknowns.remove(global_info.game_name)
+                    global_game_images[global_info.game_name] = global_info.game_image_url
+                    game_image_unknowns.discard(global_info.game_name)
                 else:
                     game_image_unknowns.add(global_info.game_name)
             try:
                 for batch in itertools.batched(game_image_unknowns, 100):
                     games = api.get_games(names=list(batch))
                     async for game in games:
-                        game_images[game.name] = game.box_art_url.replace("{width}", "60").replace("{height}", "80")
+                        global_game_images[game.name] = game.box_art_url.replace("{width}", "60").replace("{height}", "80")
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
                 print("Twitch API Server Error in TwitchListen")
@@ -297,33 +298,8 @@ class MatoStreamshow(discord.Client):
                     print("  Channel id: " + str(dc_id))
                     traceback.print_exception(e)
                 try:
-                    for name, server_info in server_live_infos.items():
-                        cap_name = recover_case(name, cap_l)
-                        global_info = global_live_infos[name]
-                        plain_game = plain(global_info.game_name)
-                        text = "**" + plain(server_info.display_name) + "** is live! Playing " + plain_game
-                        title = plain(global_info.title)
-                        thumb = global_info.thumbnail_url or guess_thumbnail_url(name, thumbnail_url_template)
-                        icon = server_info.display_avatar or global_info.profile_image_url
-                        game_icon = global_info.game_image_url or game_images.get(global_info.game_name)
-                        if name in server_channel_msgs:
-                            m = server_channel_msgs[name]
-                            if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
-                                embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
-                                embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
-                                embed.set_thumbnail(url=thumb)
-                                embed.set_footer(text=plain_game, icon_url=game_icon)
-                                if global_info.started_at:
-                                    embed.timestamp = global_info.started_at
-                                server_channel_msgs[name] = await m.edit(content=text, embed=embed)
-                        else:
-                            embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
-                            embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
-                            embed.set_thumbnail(url=thumb)
-                            embed.set_footer(text=plain_game, icon_url=game_icon)
-                            if global_info.started_at:
-                                embed.timestamp = global_info.started_at
-                            server_channel_msgs[name] = await dc.send(text, embed=embed)
+                    for name in server_live_infos.keys():
+                        await ensure_message(g, name)
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to send messages in:")
                     print("  Server name: " + d["name"])
@@ -340,6 +316,53 @@ class MatoStreamshow(discord.Client):
         except aiohttp.client_exceptions.ClientConnectorError as e:
             print("Client Connector Error in TwitchListen")
             traceback.print_exception(e)
+
+async def ensure_message(g, name):
+    global thumbnail_url_template
+    global global_live_infos
+    global global_game_images
+    global server_live_infoss
+    global server_channel_msgss
+    d = save.get_guild_data(g)
+    dc_id = d["channel_id"]
+    if not (dc_id and dc_id != 0):
+        return
+    cap_l = d["twitch_streamer_list"]
+    server_live_infos = server_live_infoss[g]
+    dc = bot.get_channel(dc_id)
+    if not g in server_channel_msgss:
+        server_channel_msgss[g] = {}
+    server_channel_msgs = server_channel_msgss[g]
+    # -----------------------------------------------------
+    cap_name = recover_case(name, cap_l)
+    global_info = global_live_infos[name]
+    server_info = server_live_infos[name]
+    plain_game = plain(global_info.game_name)
+    text = "**" + plain(server_info.display_name) + "** is live! Playing " + plain_game
+    title = plain(global_info.title)
+    thumb = global_info.thumbnail_url or guess_thumbnail_url(name, thumbnail_url_template)
+    icon = server_info.display_avatar or global_info.profile_image_url
+    game_icon = global_info.game_image_url or global_game_images.get(global_info.game_name)
+    if name in server_channel_msgs:
+        m = server_channel_msgs[name]
+        if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
+            embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
+            embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
+            embed.set_thumbnail(url=thumb)
+            embed.set_footer(text=plain_game, icon_url=game_icon)
+            if global_info.started_at:
+                embed.timestamp = global_info.started_at
+            server_channel_msgs[name] = await m.edit(content=text, embed=embed)
+    else:
+        embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
+        embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
+        embed.set_thumbnail(url=thumb)
+        embed.set_footer(text=plain_game, icon_url=game_icon)
+        if global_info.started_at:
+            embed.timestamp = global_info.started_at
+        server_channel_msgs[name] = await dc.send(text, embed=embed)
+
+# ---------------------------------------------------------
 
 intents = discord.Intents.default()
 intents.presences = True
