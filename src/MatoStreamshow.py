@@ -29,6 +29,7 @@ ServerLiveInfo = namedtuple('ServerLiveInfo', ['display_name', 'display_avatar',
 
 global_live_infos: dict[str, GlobalLiveInfo] = {}
 server_live_infoss: dict[str, dict[str, ServerLiveInfo]] = {}
+server_channel_msgss: dict[str, dict[str, discord.Message]] = {}
 
 def parse_twitch_username(s: str) -> str | None:
     m = re.search(r"\s*(.*@|.*twitch.tv/)?(\w+)\s*", s)
@@ -100,6 +101,7 @@ class MatoStreamshow(discord.Client):
         global thumbnail_url_template
         global global_live_infos
         global server_live_infoss
+        global server_channel_msgss
         global_valid_keys: set[str] = set()
         server_valid_keyss: dict[str, set[str]] = {}
         try:
@@ -111,7 +113,8 @@ class MatoStreamshow(discord.Client):
                 cap_l = d["twitch_streamer_list"]
                 dsr_id = d["streamer_role_id"]
                 dlr_id = d["live_role_id"]
-                server_live_infoss[g] = {}
+                if not g in server_live_infoss:
+                    server_live_infoss[g] = {}
                 server_live_infos = server_live_infoss[g]
                 server_valid_keyss[g] = set()
                 server_valid_keys = server_valid_keyss[g]
@@ -275,17 +278,19 @@ class MatoStreamshow(discord.Client):
                 cap_l = d["twitch_streamer_list"]
                 server_live_infos = server_live_infoss[g]
                 dc = bot.get_channel(dc_id)
-                dcms = {}
+                if not g in server_channel_msgss:
+                    server_channel_msgss[g] = {}
+                server_channel_msgs = server_channel_msgss[g]
                 try:
                     async for m in dc.history():
                         if m.author.id == self.user.id and 1 <= len(m.embeds):
                             name = m.embeds[0].author.name.casefold()
-                            if name in dcms:
-                                if dcms[name].id != m.id:
+                            if name in server_channel_msgs:
+                                if server_channel_msgs[name].id != m.id:
                                     # ** there can only be one! **
                                     await m.delete()
                             else:
-                                dcms[name] = m
+                                server_channel_msgs[name] = m
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to read message history in:")
                     print("  Server name: " + d["name"])
@@ -301,8 +306,8 @@ class MatoStreamshow(discord.Client):
                         thumb = global_info.thumbnail_url or guess_thumbnail_url(name, thumbnail_url_template)
                         icon = server_info.display_avatar or global_info.profile_image_url
                         game_icon = global_info.game_image_url or game_images.get(global_info.game_name)
-                        if name in dcms:
-                            m = dcms[name]
+                        if name in server_channel_msgs:
+                            m = server_channel_msgs[name]
                             if m.content != text or len(m.embeds) == 0 or m.embeds[0].title != title:
                                 embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
                                 embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
@@ -310,7 +315,7 @@ class MatoStreamshow(discord.Client):
                                 embed.set_footer(text=plain_game, icon_url=game_icon)
                                 if global_info.started_at:
                                     embed.timestamp = global_info.started_at
-                                dcms[name] = await m.edit(content=text, embed=embed)
+                                server_channel_msgs[name] = await m.edit(content=text, embed=embed)
                         else:
                             embed = discord.Embed(colour=discord.Colour.purple(), title=title, url=global_info.url)
                             embed.set_author(name=cap_name, url=global_info.url, icon_url=icon)
@@ -318,17 +323,17 @@ class MatoStreamshow(discord.Client):
                             embed.set_footer(text=plain_game, icon_url=game_icon)
                             if global_info.started_at:
                                 embed.timestamp = global_info.started_at
-                            dcms[name] = await dc.send(text, embed=embed)
+                            server_channel_msgs[name] = await dc.send(text, embed=embed)
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to send messages in:")
                     print("  Server name: " + d["name"])
                     print("  Channel id: " + str(dc_id))
                     traceback.print_exception(e)
                 if not hadTwitchBackendException:
-                    for name in set(dcms.keys()):
+                    for name in set(server_channel_msgs.keys()):
                         if not name in server_live_infos:
-                            await dcms[name].delete()
-                            dcms.pop(name, None)
+                            await server_channel_msgs[name].delete()
+                            server_channel_msgs.pop(name, None)
         except discord.DiscordServerError as e:
             print("Discord Server Error in TwitchListen")
             traceback.print_exception(e)
