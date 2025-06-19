@@ -317,6 +317,9 @@ class MatoStreamshow(discord.Client):
         except aiohttp.client_exceptions.ClientConnectorError as e:
             print("Client Connector Error in TwitchListen")
             traceback.print_exception(e)
+        except discord.HTTPException as e:
+            print("HTTP Exception in TwitchListen")
+            traceback.print_exception(e)
 
     async def on_presence_update(self, _: discord.Member, m: discord.Member):
         global global_live_infos
