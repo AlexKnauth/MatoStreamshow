@@ -314,8 +314,8 @@ class MatoStreamshow(discord.Client):
         except discord.DiscordServerError as e:
             print("Discord Server Error in TwitchListen")
             traceback.print_exception(e)
-        except aiohttp.client_exceptions.ClientConnectorError as e:
-            print("Client Connector Error in TwitchListen")
+        except aiohttp.client_exceptions.ClientError as e:
+            print("Client Error in TwitchListen")
             traceback.print_exception(e)
         except discord.HTTPException as e:
             print("HTTP Exception in TwitchListen")
