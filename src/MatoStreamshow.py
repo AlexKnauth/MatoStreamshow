@@ -1,4 +1,5 @@
 from collections import namedtuple
+from enum import Enum
 
 import aiohttp
 import config
@@ -113,7 +114,10 @@ class MatoStreamshow(discord.Client):
                 if not (dc_id and dc_id != 0):
                     continue
                 cap_l = d["twitch_streamer_list"]
-                dsr_id = d["streamer_role_id"]
+                cats = d["twitch_category_list"]
+                if not "streamer_roles" in d:
+                    d["streamer_roles"] = { str(d["streamer_role_id"]): False } if ("streamer_role_id" in d and d["streamer_role_id"]) else {}
+                streamer_roles = d["streamer_roles"]
                 dlr_id = d["live_role_id"]
                 if not g in server_live_infoss:
                     server_live_infoss[g] = {}
@@ -122,34 +126,34 @@ class MatoStreamshow(discord.Client):
                 server_valid_keys = server_valid_keyss[g]
                 streamer_members: set[discord.Member] = set()
                 live_members: set[discord.Member] = set()
-                if not (dsr_id and dsr_id != 0):
-                    continue
                 guild = self.get_guild(int(g))
-                dsr = guild.get_role(dsr_id)
-                for m in dsr.members:
-                    streamer_members.add(m)
-                for m in streamer_members:
-                    for a in m.activities:
-                        if isinstance(a, discord.Streaming) and a.platform == "Twitch":
-                            live_members.add(m)
-                            lower_name = a.twitch_name.casefold()
-                            global_live_infos[lower_name] = GlobalLiveInfo(
-                                game_name=a.game,
-                                title=a.name,
-                                url=a.url,
-                                thumbnail_url=None,
-                                profile_image_url=None,
-                                started_at=a.created_at,
-                                game_image_url=None,
-                            )
-                            server_live_infos[lower_name] = ServerLiveInfo(
-                                display_name=m.display_name,
-                                display_avatar=m.display_avatar,
-                                has_streamer_role=True,
-                            )
-                            global_valid_keys.add(lower_name)
-                            server_valid_keys.add(lower_name)
-                            break
+                for role_id_str, filtered in streamer_roles.items():
+                    dsr = guild.get_role(int(role_id_str))
+                    for m in dsr.members:
+                        streamer_members.add(m)
+                    for m in streamer_members:
+                        for a in m.activities:
+                            if isinstance(a, discord.Streaming) and a.platform == "Twitch":
+                                if (not filtered) or len(cats) == 0 or a.game in cats:
+                                    live_members.add(m)
+                                    lower_name = a.twitch_name.casefold()
+                                    global_live_infos[lower_name] = GlobalLiveInfo(
+                                        game_name=a.game,
+                                        title=a.name,
+                                        url=a.url,
+                                        thumbnail_url=None,
+                                        profile_image_url=None,
+                                        started_at=a.created_at,
+                                        game_image_url=None,
+                                    )
+                                    server_live_infos[lower_name] = ServerLiveInfo(
+                                        display_name=m.display_name,
+                                        display_avatar=m.display_avatar,
+                                        has_streamer_role=True,
+                                    )
+                                    global_valid_keys.add(lower_name)
+                                    server_valid_keys.add(lower_name)
+                                break
                 if not (dlr_id and dlr_id != 0):
                     continue
                 try:
@@ -331,41 +335,47 @@ class MatoStreamshow(discord.Client):
         dc_id = d["channel_id"]
         if not (dc_id and dc_id != 0):
             return
-        dsr_id = d["streamer_role_id"]
-        if not (dsr_id and dsr_id != 0):
-            return
-        if not m.get_role(dsr_id):
-            return
+        if not "streamer_roles" in d:
+            d["streamer_roles"] = { str(d["streamer_role_id"]): False } if ("streamer_role_id" in d and d["streamer_role_id"]) else {}
+        streamer_roles = d["streamer_roles"]
+        cats = d["twitch_category_list"]
         if not g in server_live_infoss:
             server_live_infoss[g] = {}
         server_live_infos = server_live_infoss[g]
         is_live = False
         lower_name = None
-        for a in m.activities:
-            if isinstance(a, discord.Streaming) and a.platform == "Twitch":
-                is_live = True
-                lower_name = a.twitch_name.casefold()
-                thumb = None
-                profile_image = None
-                if lower_name in global_live_infos:
-                    global_info = global_live_infos[lower_name]
-                    thumb = global_info.thumbnail_url
-                    profile_image = global_info.profile_image_url
-                global_live_infos[lower_name] = GlobalLiveInfo(
-                    game_name=a.game,
-                    title=a.name,
-                    url=a.url,
-                    thumbnail_url=thumb,
-                    profile_image_url=profile_image,
-                    started_at=a.created_at,
-                    game_image_url=global_game_images.get(a.game),
-                )
-                server_live_infos[lower_name] = ServerLiveInfo(
-                    display_name=m.display_name,
-                    display_avatar=m.display_avatar,
-                    has_streamer_role=True,
-                )
-                break
+        for role_id_str, filtered in streamer_roles.items():
+            dsr_id = int(role_id_str)
+            if not (dsr_id and dsr_id != 0):
+                continue
+            if not m.get_role(dsr_id):
+                continue
+            for a in m.activities:
+                if isinstance(a, discord.Streaming) and a.platform == "Twitch":
+                    if (not filtered) or len(cats) == 0 or a.game in cats:
+                        is_live = True
+                        lower_name = a.twitch_name.casefold()
+                        thumb = None
+                        profile_image = None
+                        if lower_name in global_live_infos:
+                            global_info = global_live_infos[lower_name]
+                            thumb = global_info.thumbnail_url
+                            profile_image = global_info.profile_image_url
+                        global_live_infos[lower_name] = GlobalLiveInfo(
+                            game_name=a.game,
+                            title=a.name,
+                            url=a.url,
+                            thumbnail_url=thumb,
+                            profile_image_url=profile_image,
+                            started_at=a.created_at,
+                            game_image_url=global_game_images.get(a.game),
+                        )
+                        server_live_infos[lower_name] = ServerLiveInfo(
+                            display_name=m.display_name,
+                            display_avatar=m.display_avatar,
+                            has_streamer_role=True,
+                        )
+                    break
         if not is_live:
             return
         dlr_id = d["live_role_id"]
@@ -483,12 +493,98 @@ async def channel(interaction: discord.Interaction, channel: discord.TextChannel
     else:
         await interaction.response.send_message("Error: MatoStreamshow needs permission to send messages in " + channel.mention)
 
+@bot.tree.command(name="streamer-role-list")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
+async def streamer_role_list(interaction: discord.Interaction):
+    """
+    Lists the discord roles to check streams for.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    """
+    if interaction.guild is None: return
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    if not "streamer_roles" in d:
+        d["streamer_roles"] = { str(d["streamer_role_id"]): False } if ("streamer_role_id" in d and d["streamer_role_id"]) else {}
+    streamer_roles = d["streamer_roles"]
+    role_list = []
+    for k in set(streamer_roles.keys()):
+        r = interaction.guild.get_role(int(k))
+        if r:
+            role_list.append(r.name)
+        else:
+            streamer_roles.pop(k, None)
+    role_list.sort(key=str.casefold)
+    save.save()
+    await interaction.response.send_message(codeblock(repr(role_list), language="python"))
+
+@bot.tree.command(name="streamer-role-add")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
+async def streamer_role_add(interaction: discord.Interaction, role: discord.Role, filtered: bool = False):
+    """
+    Adds a role to check streams for.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    role : discord.Role
+        The role to check streams for.
+    filtered : bool
+        Whether to apply the category filter to members with this role.
+    """
+    if interaction.guild is None: return
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    if not "streamer_roles" in d:
+        d["streamer_roles"] = { str(d["streamer_role_id"]): False } if ("streamer_role_id" in d and d["streamer_role_id"]) else {}
+    streamer_roles = d["streamer_roles"]
+    streamer_roles[str(role.id)] = filtered
+    save.save()
+    await interaction.response.send_message("Added streamer role " + plain(role.name))
+
+@bot.tree.command(name="streamer-role-remove")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
+async def streamer_role_remove(interaction: discord.Interaction, role: discord.Role):
+    """
+    Removes a role from the list of roles to check streams for.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    role : discord.Role
+        The role to stop checking.
+    """
+    if interaction.guild is None: return
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    if not "streamer_roles" in d:
+        await interaction.response.send_message(plain(role.name) + " not found")
+        return
+    streamer_roles = d["streamer_roles"]
+    s = str(role.id)
+    if s in streamer_roles:
+        streamer_roles.pop(s, None)
+        save.save()
+        await interaction.response.send_message("Removed streamer role " + plain(role.name))
+    else:
+        await interaction.response.send_message(plain(role.name) + " not found")
+
 @bot.tree.command(name="streamer-role")
 @app_commands.default_permissions(manage_roles=True)
 @app_commands.checks.has_permissions(manage_roles=True)
-async def streamer_role(interaction: discord.Interaction, role: discord.Role):
+async def streamer_role(interaction: discord.Interaction, role: discord.Role, filtered: bool = False):
     """
-    Sets the role to check streams for.
+    Sets the role as the only role to check streams for.
+    Erases any other streamer roles.
+    If you don't want to erase other roles, use `/streamer-role-add` instead.
 
     Parameters
     ----------
@@ -501,6 +597,7 @@ async def streamer_role(interaction: discord.Interaction, role: discord.Role):
     d = save.get_guild_data(str(interaction.guild.id))
     d["name"] = interaction.guild.name
     d["streamer_role_id"] = role.id
+    d["streamer_roles"] = { str(role.id): filtered }
     save.save()
     await interaction.response.send_message("Streamer role set to " + plain(role.name))
 
@@ -580,7 +677,7 @@ async def twitch_streamer_add(interaction: discord.Interaction, twitch_username:
         twitch_streamer_list.append(tu)
         twitch_streamer_list.sort(key=str.casefold)
         save.save()
-        await interaction.response.send_message("Added " + plain(tu))
+        await interaction.response.send_message("Added twitch user " + plain(tu))
 
 @bot.tree.command(name="twitch-streamer-remove")
 @app_commands.default_permissions(manage_roles=True)
@@ -606,7 +703,7 @@ async def twitch_streamer_remove(interaction: discord.Interaction, twitch_userna
     elif tu in cap_l:
         cap_l.remove(tu)
         save.save()
-        await interaction.response.send_message("Removed " + plain(tu))
+        await interaction.response.send_message("Removed twitch user " + plain(tu))
     else:
         await interaction.response.send_message(plain(tu) + " not found")
 
@@ -667,7 +764,7 @@ async def twitch_category_add(interaction: discord.Interaction, twitch_category:
             twitch_category_list.append(game_name)
             twitch_category_list.sort(key=str.casefold)
             save.save()
-            await interaction.response.send_message("Added " + plain(game_name))
+            await interaction.response.send_message("Added category " + plain(game_name))
 
 @bot.tree.command(name="twitch-category-remove")
 @app_commands.default_permissions(manage_roles=True)
@@ -690,7 +787,7 @@ async def twitch_category_remove(interaction: discord.Interaction, twitch_catego
     if twitch_category in cap_l:
         cap_l.remove(twitch_category)
         save.save()
-        await interaction.response.send_message("Removed " + plain(twitch_category))
+        await interaction.response.send_message("Removed category " + plain(twitch_category))
     else:
         await interaction.response.send_message(plain(twitch_category) + " not found")
 
