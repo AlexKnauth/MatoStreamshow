@@ -1,3 +1,6 @@
+# Run:
+# python src/MatoStreamshow.py
+
 from collections import namedtuple
 from enum import Enum
 
