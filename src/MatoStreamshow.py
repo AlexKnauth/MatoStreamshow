@@ -2,7 +2,6 @@
 # python src/MatoStreamshow.py
 
 from collections import namedtuple
-from enum import Enum
 
 import aiohttp.client_exceptions
 import config
@@ -55,7 +54,7 @@ def guess_thumbnail_url(user_name: str, template: str | None) -> str | None:
         return None
     return template.replace("{user_name}", user_name.casefold(), 1)
 
-def recover_case(s: str, l) -> str:
+def recover_case(s: str, l: list[str]) -> str:
     scf = s.casefold()
     for e in l:
         if scf == e.casefold():
@@ -543,7 +542,7 @@ async def streamer_role_list(interaction: discord.Interaction):
     if not "streamer_roles" in d:
         d["streamer_roles"] = { str(d["streamer_role_id"]): False } if ("streamer_role_id" in d and d["streamer_role_id"]) else {}
     streamer_roles = d["streamer_roles"]
-    role_list = []
+    role_list: list[str] = []
     for k in set(streamer_roles.keys()):
         r = interaction.guild.get_role(int(k))
         if r:
