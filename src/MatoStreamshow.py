@@ -118,6 +118,9 @@ class MatoStreamshow(discord.Client):
                 if not "streamer_roles" in d:
                     d["streamer_roles"] = { str(d["streamer_role_id"]): False } if ("streamer_role_id" in d and d["streamer_role_id"]) else {}
                 streamer_roles = d["streamer_roles"]
+                if not "muted_role_list" in d:
+                    d["muted_role_list"] = []
+                muted_role_list = d["muted_role_list"]
                 dlr_id = d["live_role_id"]
                 if not g in server_live_infoss:
                     server_live_infoss[g] = {}
@@ -130,7 +133,8 @@ class MatoStreamshow(discord.Client):
                 for role_id_str, filtered in streamer_roles.items():
                     dsr = guild.get_role(int(role_id_str))
                     for m in dsr.members:
-                        streamer_members.add(m)
+                        if not has_any_of_role_ids(m, muted_role_list):
+                            streamer_members.add(m)
                     for m in streamer_members:
                         for a in m.activities:
                             if isinstance(a, discord.Streaming) and a.platform == "Twitch":
@@ -338,6 +342,11 @@ class MatoStreamshow(discord.Client):
         if not "streamer_roles" in d:
             d["streamer_roles"] = { str(d["streamer_role_id"]): False } if ("streamer_role_id" in d and d["streamer_role_id"]) else {}
         streamer_roles = d["streamer_roles"]
+        if not "muted_role_list" in d:
+            d["muted_role_list"] = []
+        muted_role_list = d["muted_role_list"]
+        if has_any_of_role_ids(m, muted_role_list):
+            return
         cats = d["twitch_category_list"]
         if not g in server_live_infoss:
             server_live_infoss[g] = {}
@@ -601,6 +610,84 @@ async def streamer_role(interaction: discord.Interaction, role: discord.Role, fi
     save.save()
     await interaction.response.send_message("Streamer role set to " + plain(role.name))
 
+@bot.tree.command(name="muted-role-list")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
+async def muted_role_list(interaction: discord.Interaction):
+    """
+    Lists the discord roles to ignore streams from.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    """
+    if interaction.guild is None: return
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    if not "muted_role_list" in d:
+        d["muted_role_list"] = []
+    muted_role_list = d["muted_role_list"]
+    muted_role_list.sort()
+    save.save()
+    await interaction.response.send_message(codeblock(repr(muted_role_list), language="python"))
+
+@bot.tree.command(name="muted-role-add")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
+async def muted_role_add(interaction: discord.Interaction, role: discord.Role):
+    """
+    Adds a role to ignore streams from.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    role : discord.Role
+        The role to ignore streams from.
+    """
+    if interaction.guild is None: return
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    if not "muted_role_list" in d:
+        d["muted_role_list"] = []
+    muted_role_list = d["muted_role_list"]
+    if role.id in muted_role_list:
+        await interaction.response.send_message("Already muted role " + plain(role.name))
+    else:
+        muted_role_list.append(role.id)
+        muted_role_list.sort()
+        save.save()
+        await interaction.response.send_message("Added muted role " + plain(role.name))
+
+@bot.tree.command(name="muted-role-remove")
+@app_commands.default_permissions(manage_roles=True)
+@app_commands.checks.has_permissions(manage_roles=True)
+async def muted_role_remove(interaction: discord.Interaction, role: discord.Role):
+    """
+    Removes a role from the list of roles to ignore streams from.
+
+    Parameters
+    ----------
+    interaction : discord.Interaction
+        The interaction object.
+    role : discord.Role
+        The role to stop ignoring.
+    """
+    if interaction.guild is None: return
+    d = save.get_guild_data(str(interaction.guild.id))
+    d["name"] = interaction.guild.name
+    if not "muted_role_list" in d:
+        await interaction.response.send_message(plain(role.name) + " not found")
+        return
+    muted_role_list = d["muted_role_list"]
+    if role.id in muted_role_list:
+        muted_role_list.remove(role.id)
+        save.save()
+        await interaction.response.send_message("Removed muted role " + plain(role.name))
+    else:
+        await interaction.response.send_message(plain(role.name) + " not found")
+
 @bot.tree.command(name="live-role")
 @app_commands.default_permissions(manage_roles=True)
 @app_commands.checks.has_permissions(manage_roles=True)
@@ -790,6 +877,12 @@ async def twitch_category_remove(interaction: discord.Interaction, twitch_catego
         await interaction.response.send_message("Removed category " + plain(twitch_category))
     else:
         await interaction.response.send_message(plain(twitch_category) + " not found")
+
+def has_any_of_role_ids(m: discord.Member, role_ids: list[int]):
+    for role_id in role_ids:
+        if m.get_role(role_id):
+            return True
+    return False
 
 def main():
     if config.token == "":
