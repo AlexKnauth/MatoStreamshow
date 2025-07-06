@@ -18,9 +18,9 @@ from twitchAPI.twitch import Twitch
 api: Twitch | None = None
 
 if (not config.twitch_api_id) or config.twitch_api_id == "":
-    print("config twitch_api_id not found")
+    print("config twitch_api_id not found", flush=True)
 if (not config.twitch_api_secret) or config.twitch_api_secret == "":
-    print("config twitch_api_secret not found")
+    print("config twitch_api_secret not found", flush=True)
 
 # ---------------------------------------------------------
 
@@ -93,10 +93,10 @@ class MatoStreamshow(discord.Client):
     async def setup_twitch(self):
         global api
         if api is not None:
-            print("Setup attempted when already set up, ignoring")
+            print("Setup attempted when already set up, ignoring", flush=True)
             return
         if not config.twitch_api_id or not config.twitch_api_secret or config.twitch_api_id == "" or config.twitch_api_secret == "":
-            print("Setup attempted when twitch api info not present, ignoring")
+            print("Setup attempted when twitch api info not present, ignoring", flush=True)
             return
         api = await Twitch(config.twitch_api_id, config.twitch_api_secret, True, [])
 
@@ -181,7 +181,7 @@ class MatoStreamshow(discord.Client):
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to manage the live role in:")
                     print("  Server name: " + d["name"])
-                    print("  Role id: " + str(dlr_id))
+                    print("  Role id: " + str(dlr_id), flush=True)
                     traceback.print_exception(e)
             lower_set_all: set[str] = set()
             for g in save.get_guild_ids():
@@ -202,9 +202,9 @@ class MatoStreamshow(discord.Client):
                                 template = guess_thumbnail_url_template(stream.user_name, thumb)
                                 if template and (not template in invalid_thumbnail_url_templates):
                                     thumbnail_url_template = template
-                                    print("current thumbnail_url_template: " + thumbnail_url_template)
+                                    print("current thumbnail_url_template: " + thumbnail_url_template, flush=True)
                             elif guess_thumbnail_url(stream.user_name, thumbnail_url_template) != thumb:
-                                print("invalid thumbnail_url_template: " + thumbnail_url_template)
+                                print("invalid thumbnail_url_template: " + thumbnail_url_template, flush=True)
                                 invalid_thumbnail_url_templates.append(thumbnail_url_template)
                                 thumbnail_url_template = None
                             url = "https://www.twitch.tv/" + stream.user_name
@@ -225,7 +225,7 @@ class MatoStreamshow(discord.Client):
                                 global_live_infos.pop(lower_name, None)
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
-                print("Twitch API Server Error in TwitchListen")
+                print("Twitch API Server Error in TwitchListen", flush=True)
                 traceback.print_exception(e)
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
@@ -269,7 +269,7 @@ class MatoStreamshow(discord.Client):
                             global_live_infos[lower_name] = global_info._replace(profile_image_url=user.profile_image_url)
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
-                print("Twitch API Server Error in TwitchListen")
+                print("Twitch API Server Error in TwitchListen", flush=True)
                 traceback.print_exception(e)
             game_image_unknowns = set()
             for global_info in global_live_infos.values():
@@ -290,7 +290,7 @@ class MatoStreamshow(discord.Client):
                             global_game_images[game.name] = game.box_art_url.replace("{width}", "60").replace("{height}", "80")
             except twitchAPI.type.TwitchBackendException as e:
                 hadTwitchBackendException = True
-                print("Twitch API Server Error in TwitchListen")
+                print("Twitch API Server Error in TwitchListen", flush=True)
                 traceback.print_exception(e)
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
@@ -321,7 +321,7 @@ class MatoStreamshow(discord.Client):
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to read message history in:")
                     print("  Server name: " + d["name"])
-                    print("  Channel id: " + str(dc_id))
+                    print("  Channel id: " + str(dc_id), flush=True)
                     traceback.print_exception(e)
                 try:
                     for name in server_live_infos.keys():
@@ -329,7 +329,7 @@ class MatoStreamshow(discord.Client):
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to send messages in:")
                     print("  Server name: " + d["name"])
-                    print("  Channel id: " + str(dc_id))
+                    print("  Channel id: " + str(dc_id), flush=True)
                     traceback.print_exception(e)
                 if not hadTwitchBackendException:
                     for name in set(server_channel_msgs.keys()):
@@ -337,13 +337,13 @@ class MatoStreamshow(discord.Client):
                             await server_channel_msgs[name].delete()
                             server_channel_msgs.pop(name, None)
         except discord.DiscordServerError as e:
-            print("Discord Server Error in TwitchListen")
+            print("Discord Server Error in TwitchListen", flush=True)
             traceback.print_exception(e)
         except aiohttp.client_exceptions.ClientError as e:
-            print("Client Error in TwitchListen")
+            print("Client Error in TwitchListen", flush=True)
             traceback.print_exception(e)
         except discord.HTTPException as e:
-            print("HTTP Exception in TwitchListen")
+            print("HTTP Exception in TwitchListen", flush=True)
             traceback.print_exception(e)
 
     async def on_presence_update(self, _: discord.Member, m: discord.Member):
@@ -416,7 +416,7 @@ class MatoStreamshow(discord.Client):
             except discord.Forbidden as e:
                 print("MatoStreamshow needs permission to manage the live role in:")
                 print("  Server name: " + d["name"])
-                print("  Role id: " + str(dlr_id))
+                print("  Role id: " + str(dlr_id), flush=True)
                 traceback.print_exception(e)
         await ensure_message(g, lower_name)
 
@@ -480,7 +480,7 @@ bot = MatoStreamshow(intents=intents)
 async def on_ready():
     if not bot.TwitchListen.is_running():
         bot.TwitchListen.start()
-    print('MatoStreamshow Bot is online!')
+    print('MatoStreamshow Bot is online!', flush=True)
 
 @bot.tree.command()
 async def ping(interaction: discord.Interaction):
@@ -864,7 +864,7 @@ async def twitch_category_add(interaction: discord.Interaction, twitch_category:
                     game_name = game.name
                     break
         except twitchAPI.type.TwitchBackendException as e:
-            print("Twitch API Server Error in twitch-category-add")
+            print("Twitch API Server Error in twitch-category-add", flush=True)
             traceback.print_exception(e)
             await interaction.response.send_message("Twitch API Server Error: please try again later")
             return
