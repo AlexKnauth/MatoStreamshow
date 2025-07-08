@@ -375,6 +375,7 @@ class MatoStreamshow(discord.Client):
         if has_any_of_role_ids(m, muted_role_list):
             return
         cats = d["twitch_category_list"]
+        dlr_id = d["live_role_id"]
         if not g in server_live_infoss:
             server_live_infoss[g] = {}
         server_live_infos = server_live_infoss[g]
@@ -415,21 +416,21 @@ class MatoStreamshow(discord.Client):
                             has_streamer_role=True,
                         )
                     break
-        if not is_live:
+        if is_live:
+            if dlr_id and dlr_id != 0:
+                try:
+                    if not m.get_role(dlr_id):
+                        dlr = guild.get_role(dlr_id)
+                        if dlr:
+                            await m.add_roles(dlr, reason="Streaming Live")
+                except discord.Forbidden as e:
+                    print("MatoStreamshow needs permission to manage the live role in:")
+                    print("  Server name: " + d["name"])
+                    print("  Role id: " + str(dlr_id), flush=True)
+                    traceback.print_exception(e)
+            await ensure_message(g, lower_name)
+        else:
             return
-        dlr_id = d["live_role_id"]
-        if dlr_id and dlr_id != 0:
-            try:
-                if not m.get_role(dlr_id):
-                    dlr = guild.get_role(dlr_id)
-                    if dlr:
-                        await m.add_roles(dlr, reason="Streaming Live")
-            except discord.Forbidden as e:
-                print("MatoStreamshow needs permission to manage the live role in:")
-                print("  Server name: " + d["name"])
-                print("  Role id: " + str(dlr_id), flush=True)
-                traceback.print_exception(e)
-        await ensure_message(g, lower_name)
 
 async def ensure_message(g, name):
     global thumbnail_url_template
