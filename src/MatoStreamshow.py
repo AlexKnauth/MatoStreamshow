@@ -115,7 +115,6 @@ class MatoStreamshow(discord.Client):
                 dc_id = d["channel_id"]
                 if not (dc_id and dc_id != 0):
                     continue
-                cap_l = d["twitch_streamer_list"]
                 cats = d["twitch_category_list"]
                 if not "streamer_roles" in d:
                     d["streamer_roles"] = { str(d["streamer_role_id"]): False } if ("streamer_role_id" in d and d["streamer_role_id"]) else {}
