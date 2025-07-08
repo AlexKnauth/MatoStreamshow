@@ -429,8 +429,31 @@ class MatoStreamshow(discord.Client):
                     print("  Role id: " + str(dlr_id), flush=True)
                     traceback.print_exception(e)
             await ensure_message(g, lower_name)
-        else:
-            return
+        elif lower_name in global_live_infos and not global_live_infos[lower_name].from_twitch_api:
+            if dlr_id and dlr_id != 0:
+                try:
+                    dlr = m.get_role(dlr_id)
+                    if dlr:
+                        await m.remove_roles(dlr, reason="Not Streaming Live")
+                except discord.Forbidden as e:
+                    print("MatoStreamshow needs permission to manage the live role in:")
+                    print("  Server name: " + d["name"])
+                    print("  Role id: " + str(dlr_id), flush=True)
+                    traceback.print_exception(e)
+            server_live_infos.pop(lower_name, None)
+            any_left = False
+            for server_infos in server_live_infoss:
+                if lower_name in server_infos:
+                    any_left = True
+                    break
+            if not any_left:
+                global_live_infos.pop(lower_name, None)
+            if not g in server_channel_msgss:
+                server_channel_msgss[g] = {}
+            server_channel_msgs = server_channel_msgss[g]
+            msg = server_channel_msgs.pop(lower_name)
+            if msg:
+                await msg.delete()
 
 async def ensure_message(g, name):
     global thumbnail_url_template
