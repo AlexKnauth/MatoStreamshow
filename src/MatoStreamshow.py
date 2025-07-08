@@ -26,7 +26,7 @@ if (not config.twitch_api_secret) or config.twitch_api_secret == "":
 
 # Twitch info processing
 
-GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thumbnail_url', 'profile_image_url', 'started_at', 'game_image_url'])
+GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thumbnail_url', 'profile_image_url', 'started_at', 'game_image_url', 'from_twitch_api'])
 
 ServerLiveInfo = namedtuple('ServerLiveInfo', ['display_name', 'display_avatar', 'has_streamer_role'])
 
@@ -149,14 +149,23 @@ class MatoStreamshow(discord.Client):
                                     if not a.twitch_name:
                                         continue
                                     lower_name = a.twitch_name.casefold()
+                                    thumb = None
+                                    profile_image = None
+                                    from_twitch = False
+                                    if lower_name in global_live_infos:
+                                        global_info = global_live_infos[lower_name]
+                                        thumb = global_info.thumbnail_url
+                                        profile_image = global_info.profile_image_url
+                                        from_twitch = global_info.from_twitch_api
                                     global_live_infos[lower_name] = GlobalLiveInfo(
                                         game_name=a.game,
                                         title=a.name,
                                         url=a.url,
-                                        thumbnail_url=None,
-                                        profile_image_url=None,
+                                        thumbnail_url=thumb,
+                                        profile_image_url=profile_image,
                                         started_at=a.created_at,
-                                        game_image_url=None,
+                                        game_image_url=a.game and global_game_images.get(a.game),
+                                        from_twitch_api=from_twitch,
                                     )
                                     server_live_infos[lower_name] = ServerLiveInfo(
                                         display_name=m.display_name,
@@ -215,9 +224,10 @@ class MatoStreamshow(discord.Client):
                                     title=stream.title,
                                     url=url,
                                     thumbnail_url=thumb,
-                                    profile_image_url=None,
+                                    profile_image_url=global_live_infos[lower_name].profile_image_url if lower_name in global_live_infos else None,
                                     started_at=stream.started_at,
-                                    game_image_url=None,
+                                    game_image_url=stream.game_name and global_game_images.get(stream.game_name),
+                                    from_twitch_api=True,
                                 )
                                 global_valid_keys.add(lower_name)
                         for lower_name in batch:
@@ -397,6 +407,7 @@ class MatoStreamshow(discord.Client):
                             profile_image_url=profile_image,
                             started_at=a.created_at,
                             game_image_url=a.game and global_game_images.get(a.game),
+                            from_twitch_api=global_live_infos[lower_name].from_twitch_api if lower_name in global_live_infos else False,
                         )
                         server_live_infos[lower_name] = ServerLiveInfo(
                             display_name=m.display_name,
