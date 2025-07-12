@@ -258,6 +258,8 @@ class MatoStreamshow(discord.Client):
                             server_valid_keys.add(lower_name)
                 if not hadTwitchBackendException:
                     for lower_name in set(server_live_infos.keys()):
+                        # TODO: tweak this condition to avoid deleting
+                        # entries from Discord that weren't from Twitch
                         if not lower_name in server_valid_keys:
                             server_live_infos.pop(lower_name, None)
             avatar_unknowns = set()
