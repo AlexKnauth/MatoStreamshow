@@ -132,6 +132,7 @@ class MatoStreamshow(discord.Client):
 
             #region Discord activity presence and roles
 
+            listened_discord = False
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
                 dc_id = d["channel_id"]
@@ -213,6 +214,7 @@ class MatoStreamshow(discord.Client):
                     print("  Server name: " + d["name"])
                     print("  Role id: " + str(dlr_id), flush=True)
                     traceback.print_exception(e)
+            listened_discord = True
 
             #endregion Discord activity presence and roles
 
@@ -289,9 +291,12 @@ class MatoStreamshow(discord.Client):
                             server_valid_keys.add(lower_name)
                 if not hadTwitchBackendException:
                     for lower_name in set(server_live_infos.keys()):
-                        # TODO: tweak this condition to avoid deleting
-                        # entries from Discord that weren't from Twitch
-                        if not lower_name in server_valid_keys:
+                        # This condition is here to avoid deleting
+                        # entries from Discord that weren't from Twitch,
+                        # when it hasn't listened to Discord fully this time.
+                        # Only delete entries when either listened_discord,
+                        # or it's not from Twitch.
+                        if (not lower_name in server_valid_keys) and (listened_discord or not (lower_name in global_live_infos and global_live_infos[lower_name].from_twitch_api)):
                             server_live_infos.pop(lower_name, None)
 
             #region Twitch profile image avatars
