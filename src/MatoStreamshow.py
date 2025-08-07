@@ -129,6 +129,9 @@ class MatoStreamshow(discord.Client):
         global_valid_keys: set[str] = set()
         server_valid_keyss: dict[str, set[str]] = {}
         try:
+
+            #region Discord activity presence and roles
+
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
                 dc_id = d["channel_id"]
@@ -210,6 +213,9 @@ class MatoStreamshow(discord.Client):
                     print("  Server name: " + d["name"])
                     print("  Role id: " + str(dlr_id), flush=True)
                     traceback.print_exception(e)
+
+            #endregion Discord activity presence and roles
+
             lower_set_all: set[str] = set()
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
@@ -218,6 +224,9 @@ class MatoStreamshow(discord.Client):
                     continue
                 cap_l = d["twitch_streamer_list"]
                 lower_set_all.update((u.casefold() for u in cap_l))
+
+            #region Twitch streams
+
             hadTwitchBackendException = False
             try:
                 if api:
@@ -255,6 +264,9 @@ class MatoStreamshow(discord.Client):
                 hadTwitchBackendException = True
                 print("Twitch API Server Error in TwitchListen", flush=True)
                 traceback.print_exception(e)
+
+            #endregion Twitch streams
+
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
                 dc_id = d["channel_id"]
@@ -281,6 +293,9 @@ class MatoStreamshow(discord.Client):
                         # entries from Discord that weren't from Twitch
                         if not lower_name in server_valid_keys:
                             server_live_infos.pop(lower_name, None)
+
+            #region Twitch profile image avatars
+
             avatar_unknowns = set()
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
@@ -301,6 +316,11 @@ class MatoStreamshow(discord.Client):
                 hadTwitchBackendException = True
                 print("Twitch API Server Error in TwitchListen", flush=True)
                 traceback.print_exception(e)
+
+            #endregion Twitch profile image avatars
+
+            #region Twitch game image box art
+
             game_image_unknowns = set()
             for global_info in global_live_infos.values():
                 if global_info.game_name in global_game_images:
@@ -322,6 +342,11 @@ class MatoStreamshow(discord.Client):
                 hadTwitchBackendException = True
                 print("Twitch API Server Error in TwitchListen", flush=True)
                 traceback.print_exception(e)
+
+            #endregion Twitch game image box art
+
+            #region Discord messages
+
             for g in save.get_guild_ids():
                 d = save.get_guild_data(g)
                 dc_id = d["channel_id"]
@@ -366,6 +391,9 @@ class MatoStreamshow(discord.Client):
                         if not name in server_live_infos:
                             await server_channel_msgs[name].delete()
                             server_channel_msgs.pop(name, None)
+
+            #endregion Discord messages
+
         except discord.DiscordServerError as e:
             print("Discord Server Error in TwitchListen", flush=True)
             traceback.print_exception(e)
