@@ -26,9 +26,28 @@ if (not config.twitch_api_secret) or config.twitch_api_secret == "":
 
 # Twitch info processing
 
-GlobalLiveInfo = namedtuple('GlobalLiveInfo', ['game_name', 'title', 'url', 'thumbnail_url', 'profile_image_url', 'started_at', 'game_image_url', 'from_twitch_api'])
+GlobalLiveInfo = namedtuple(
+    "GlobalLiveInfo",
+    [
+        "game_name",
+        "title",
+        "url",
+        "thumbnail_url",
+        "profile_image_url",
+        "started_at",
+        "game_image_url",
+        "from_twitch_api",
+    ],
+)
 
-ServerLiveInfo = namedtuple('ServerLiveInfo', ['display_name', 'display_avatar', 'has_streamer_role'])
+ServerLiveInfo = namedtuple(
+    "ServerLiveInfo",
+    [
+        "display_name",
+        "display_avatar",
+        "has_streamer_role",
+    ],
+)
 
 global_live_infos: dict[str, GlobalLiveInfo] = {}
 global_game_images: dict[str, str] = {}
