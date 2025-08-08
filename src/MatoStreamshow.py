@@ -53,6 +53,7 @@ global_live_infos: dict[str, GlobalLiveInfo] = {}
 global_game_images: dict[str, str] = {}
 server_live_infoss: dict[str, dict[str, ServerLiveInfo]] = {}
 server_channel_msgss: dict[str, dict[str, discord.Message]] = {}
+server_live_memberss: dict[str, dict[str, discord.Member]] = {}
 
 def parse_twitch_username(s: str) -> str | None:
     m = re.search(r"\s*(.*@|.*twitch.tv/)?(\w+)\s*", s)
@@ -128,6 +129,7 @@ class MatoStreamshow(discord.Client):
         global global_game_images
         global server_live_infoss
         global server_channel_msgss
+        global server_live_memberss
         global_valid_keys: set[str] = set()
         server_valid_keyss: dict[str, set[str]] = {}
         try:
@@ -159,7 +161,10 @@ class MatoStreamshow(discord.Client):
                         server_valid_keyss[g] = set()
                     server_valid_keys = server_valid_keyss[g]
                     streamer_members: set[discord.Member] = set()
-                    live_members: set[discord.Member] = set()
+                    if not g in server_live_memberss:
+                        server_live_memberss[g] = {}
+                    server_live_members = server_live_memberss[g]
+                    live_members: dict[discord.Member, str] = {}
                     guild = self.get_guild(int(g))
                     if not guild:
                         continue
@@ -174,10 +179,11 @@ class MatoStreamshow(discord.Client):
                             for a in m.activities:
                                 if isinstance(a, discord.Streaming) and a.platform == "Twitch":
                                     if (not filtered) or len(cats) == 0 or a.game in cats:
-                                        live_members.add(m)
                                         if not a.twitch_name:
                                             continue
                                         lower_name = a.twitch_name.casefold()
+                                        live_members[m] = lower_name
+                                        server_live_members[lower_name] = m
                                         thumb = None
                                         profile_image = None
                                         from_twitch = False
@@ -212,9 +218,14 @@ class MatoStreamshow(discord.Client):
                             for m in streamer_members:
                                 if m in live_members:
                                     if not m.get_role(dlr_id):
+                                        server_live_members[live_members[m]] = m
                                         await m.add_roles(dlr, reason="Streaming Live")
                                 else:
                                     if m.get_role(dlr_id):
+                                        for k, v in server_live_members.items():
+                                            if v.id == m.id:
+                                                server_live_members.pop(k, None)
+                                                break
                                         await m.remove_roles(dlr, reason="Not Streaming Live")
                     except discord.Forbidden as e:
                         print("MatoStreamshow needs permission to manage the live role in:")
@@ -429,6 +440,7 @@ class MatoStreamshow(discord.Client):
         global global_live_infos
         global global_game_images
         global server_live_infoss
+        global server_live_memberss
         guild = m.guild
         g = str(guild.id)
         d = save.get_guild_data(g)
@@ -448,6 +460,9 @@ class MatoStreamshow(discord.Client):
         if not g in server_live_infoss:
             server_live_infoss[g] = {}
         server_live_infos = server_live_infoss[g]
+        if not g in server_live_memberss:
+            server_live_memberss[g] = {}
+        server_live_members = server_live_memberss[g]
         is_live = False
         lower_name = None
         for role_id_str, filtered in streamer_roles.items():
@@ -491,6 +506,8 @@ class MatoStreamshow(discord.Client):
                     if not m.get_role(dlr_id):
                         dlr = guild.get_role(dlr_id)
                         if dlr:
+                            if lower_name:
+                                server_live_members[lower_name] = m
                             await m.add_roles(dlr, reason="Streaming Live")
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to manage the live role in:")
@@ -503,6 +520,7 @@ class MatoStreamshow(discord.Client):
                 try:
                     dlr = m.get_role(dlr_id)
                     if dlr:
+                        server_live_members.pop(lower_name, None)
                         await m.remove_roles(dlr, reason="Not Streaming Live")
                 except discord.Forbidden as e:
                     print("MatoStreamshow needs permission to manage the live role in:")
