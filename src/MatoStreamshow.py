@@ -155,7 +155,8 @@ class MatoStreamshow(discord.Client):
                     if not g in server_live_infoss:
                         server_live_infoss[g] = {}
                     server_live_infos = server_live_infoss[g]
-                    server_valid_keyss[g] = set()
+                    if not g in server_valid_keyss:
+                        server_valid_keyss[g] = set()
                     server_valid_keys = server_valid_keyss[g]
                     streamer_members: set[discord.Member] = set()
                     live_members: set[discord.Member] = set()
@@ -283,6 +284,8 @@ class MatoStreamshow(discord.Client):
                 if not g in server_live_infoss:
                     server_live_infoss[g] = {}
                 server_live_infos = server_live_infoss[g]
+                if not g in server_valid_keyss:
+                    server_valid_keyss[g] = set()
                 server_valid_keys = server_valid_keyss[g]
                 cap_l = d["twitch_streamer_list"]
                 cats = d["twitch_category_list"]
