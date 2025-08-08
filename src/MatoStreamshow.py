@@ -280,6 +280,8 @@ class MatoStreamshow(discord.Client):
                 dc_id = d["channel_id"]
                 if not (dc_id and dc_id != 0):
                     continue
+                if not g in server_live_infoss:
+                    server_live_infoss[g] = {}
                 server_live_infos = server_live_infoss[g]
                 server_valid_keys = server_valid_keyss[g]
                 cap_l = d["twitch_streamer_list"]
@@ -313,6 +315,8 @@ class MatoStreamshow(discord.Client):
                 dc_id = d["channel_id"]
                 if not (dc_id and dc_id != 0):
                     continue
+                if not g in server_live_infoss:
+                    server_live_infoss[g] = {}
                 server_live_infos = server_live_infoss[g]
                 avatar_unknowns.update((u for u, i in server_live_infos.items() if i.display_avatar == None))
             try:
@@ -364,6 +368,8 @@ class MatoStreamshow(discord.Client):
                 if not (dc_id and dc_id != 0):
                     continue
                 cap_l = d["twitch_streamer_list"]
+                if not g in server_live_infoss:
+                    server_live_infoss[g] = {}
                 server_live_infos = server_live_infoss[g]
                 dc = bot.get_channel(dc_id)
                 if not isinstance(dc, discord.TextChannel):
@@ -525,6 +531,8 @@ async def ensure_message(g, name):
     if not (dc_id and dc_id != 0):
         return
     cap_l = d["twitch_streamer_list"]
+    if not g in server_live_infoss:
+        server_live_infoss[g] = {}
     server_live_infos = server_live_infoss[g]
     dc = bot.get_channel(dc_id)
     if not isinstance(dc, discord.TextChannel):
