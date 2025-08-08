@@ -386,6 +386,9 @@ class MatoStreamshow(discord.Client):
                 if not g in server_live_infoss:
                     server_live_infoss[g] = {}
                 server_live_infos = server_live_infoss[g]
+                if not g in server_live_memberss:
+                    server_live_memberss[g] = {}
+                server_live_members = server_live_memberss[g]
                 dc = bot.get_channel(dc_id)
                 if not isinstance(dc, discord.TextChannel):
                     continue
@@ -423,6 +426,20 @@ class MatoStreamshow(discord.Client):
                         if not name in server_live_infos:
                             await server_channel_msgs[name].delete()
                             server_channel_msgs.pop(name, None)
+                            if name in server_live_members:
+                                guild = self.get_guild(int(g))
+                                dlr_id = d["live_role_id"]
+                                try:
+                                    if dlr_id and dlr_id != 0:
+                                        dlr = guild and guild.get_role(dlr_id)
+                                        if dlr:
+                                            await server_live_members[name].remove_roles(dlr)
+                                            server_live_members.pop(name, None)
+                                except discord.Forbidden as e:
+                                    print("MatoStreamshow needs permission to manage the live role in:")
+                                    print("  Server name: " + d["name"])
+                                    print("  Role id: " + str(dlr_id), flush=True)
+                                    traceback.print_exception(e)
 
             #endregion Discord messages
 
