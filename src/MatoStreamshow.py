@@ -104,6 +104,8 @@ class MatoStreamshow(discord.Client):
     def __init__(self, *, intents: discord.Intents) -> None:
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
+        self.countdown = 0
+        self.countreset = 60
 
     async def setup_hook(self):
         await self.tree.sync()
@@ -133,88 +135,92 @@ class MatoStreamshow(discord.Client):
             #region Discord activity presence and roles
 
             listened_discord = False
-            for g in save.get_guild_ids():
-                d = save.get_guild_data(g)
-                dc_id = d["channel_id"]
-                if not (dc_id and dc_id != 0):
-                    continue
-                cats = d["twitch_category_list"]
-                if not "streamer_roles" in d:
-                    d["streamer_roles"] = { str(d["streamer_role_id"]): False } if ("streamer_role_id" in d and d["streamer_role_id"]) else {}
-                streamer_roles = d["streamer_roles"]
-                if not "muted_role_list" in d:
-                    d["muted_role_list"] = []
-                muted_role_list = d["muted_role_list"]
-                dlr_id = d["live_role_id"]
-                if not g in server_live_infoss:
-                    server_live_infoss[g] = {}
-                server_live_infos = server_live_infoss[g]
-                server_valid_keyss[g] = set()
-                server_valid_keys = server_valid_keyss[g]
-                streamer_members: set[discord.Member] = set()
-                live_members: set[discord.Member] = set()
-                guild = self.get_guild(int(g))
-                if not guild:
-                    continue
-                for role_id_str, filtered in streamer_roles.items():
-                    dsr = guild.get_role(int(role_id_str))
-                    if not dsr:
+            if 0 < self.countdown:
+                self.countdown -= 1
+            else:
+                self.countdown = self.countreset
+                for g in save.get_guild_ids():
+                    d = save.get_guild_data(g)
+                    dc_id = d["channel_id"]
+                    if not (dc_id and dc_id != 0):
                         continue
-                    for m in dsr.members:
-                        if not has_any_of_role_ids(m, muted_role_list):
-                            streamer_members.add(m)
-                    for m in streamer_members:
-                        for a in m.activities:
-                            if isinstance(a, discord.Streaming) and a.platform == "Twitch":
-                                if (not filtered) or len(cats) == 0 or a.game in cats:
-                                    live_members.add(m)
-                                    if not a.twitch_name:
-                                        continue
-                                    lower_name = a.twitch_name.casefold()
-                                    thumb = None
-                                    profile_image = None
-                                    from_twitch = False
-                                    if lower_name in global_live_infos:
-                                        global_info = global_live_infos[lower_name]
-                                        thumb = global_info.thumbnail_url
-                                        profile_image = global_info.profile_image_url
-                                        from_twitch = global_info.from_twitch_api
-                                    global_live_infos[lower_name] = GlobalLiveInfo(
-                                        game_name=a.game,
-                                        title=a.name,
-                                        url=a.url,
-                                        thumbnail_url=thumb,
-                                        profile_image_url=profile_image,
-                                        started_at=a.created_at,
-                                        game_image_url=a.game and global_game_images.get(a.game),
-                                        from_twitch_api=from_twitch,
-                                    )
-                                    server_live_infos[lower_name] = ServerLiveInfo(
-                                        display_name=m.display_name,
-                                        display_avatar=m.display_avatar,
-                                        has_streamer_role=True,
-                                    )
-                                    global_valid_keys.add(lower_name)
-                                    server_valid_keys.add(lower_name)
-                                break
-                if not (dlr_id and dlr_id != 0):
-                    continue
-                try:
-                    dlr = guild.get_role(dlr_id)
-                    if dlr:
+                    cats = d["twitch_category_list"]
+                    if not "streamer_roles" in d:
+                        d["streamer_roles"] = { str(d["streamer_role_id"]): False } if ("streamer_role_id" in d and d["streamer_role_id"]) else {}
+                    streamer_roles = d["streamer_roles"]
+                    if not "muted_role_list" in d:
+                        d["muted_role_list"] = []
+                    muted_role_list = d["muted_role_list"]
+                    dlr_id = d["live_role_id"]
+                    if not g in server_live_infoss:
+                        server_live_infoss[g] = {}
+                    server_live_infos = server_live_infoss[g]
+                    server_valid_keyss[g] = set()
+                    server_valid_keys = server_valid_keyss[g]
+                    streamer_members: set[discord.Member] = set()
+                    live_members: set[discord.Member] = set()
+                    guild = self.get_guild(int(g))
+                    if not guild:
+                        continue
+                    for role_id_str, filtered in streamer_roles.items():
+                        dsr = guild.get_role(int(role_id_str))
+                        if not dsr:
+                            continue
+                        for m in dsr.members:
+                            if not has_any_of_role_ids(m, muted_role_list):
+                                streamer_members.add(m)
                         for m in streamer_members:
-                            if m in live_members:
-                                if not m.get_role(dlr_id):
-                                    await m.add_roles(dlr, reason="Streaming Live")
-                            else:
-                                if m.get_role(dlr_id):
-                                    await m.remove_roles(dlr, reason="Not Streaming Live")
-                except discord.Forbidden as e:
-                    print("MatoStreamshow needs permission to manage the live role in:")
-                    print("  Server name: " + d["name"])
-                    print("  Role id: " + str(dlr_id), flush=True)
-                    traceback.print_exception(e)
-            listened_discord = True
+                            for a in m.activities:
+                                if isinstance(a, discord.Streaming) and a.platform == "Twitch":
+                                    if (not filtered) or len(cats) == 0 or a.game in cats:
+                                        live_members.add(m)
+                                        if not a.twitch_name:
+                                            continue
+                                        lower_name = a.twitch_name.casefold()
+                                        thumb = None
+                                        profile_image = None
+                                        from_twitch = False
+                                        if lower_name in global_live_infos:
+                                            global_info = global_live_infos[lower_name]
+                                            thumb = global_info.thumbnail_url
+                                            profile_image = global_info.profile_image_url
+                                            from_twitch = global_info.from_twitch_api
+                                        global_live_infos[lower_name] = GlobalLiveInfo(
+                                            game_name=a.game,
+                                            title=a.name,
+                                            url=a.url,
+                                            thumbnail_url=thumb,
+                                            profile_image_url=profile_image,
+                                            started_at=a.created_at,
+                                            game_image_url=a.game and global_game_images.get(a.game),
+                                            from_twitch_api=from_twitch,
+                                        )
+                                        server_live_infos[lower_name] = ServerLiveInfo(
+                                            display_name=m.display_name,
+                                            display_avatar=m.display_avatar,
+                                            has_streamer_role=True,
+                                        )
+                                        global_valid_keys.add(lower_name)
+                                        server_valid_keys.add(lower_name)
+                                    break
+                    if not (dlr_id and dlr_id != 0):
+                        continue
+                    try:
+                        dlr = guild.get_role(dlr_id)
+                        if dlr:
+                            for m in streamer_members:
+                                if m in live_members:
+                                    if not m.get_role(dlr_id):
+                                        await m.add_roles(dlr, reason="Streaming Live")
+                                else:
+                                    if m.get_role(dlr_id):
+                                        await m.remove_roles(dlr, reason="Not Streaming Live")
+                    except discord.Forbidden as e:
+                        print("MatoStreamshow needs permission to manage the live role in:")
+                        print("  Server name: " + d["name"])
+                        print("  Role id: " + str(dlr_id), flush=True)
+                        traceback.print_exception(e)
+                listened_discord = True
 
             #endregion Discord activity presence and roles
 
