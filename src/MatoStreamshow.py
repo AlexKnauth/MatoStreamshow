@@ -319,7 +319,7 @@ class MatoStreamshow(discord.Client):
                         # when it hasn't listened to Discord fully this time.
                         # Only delete entries when either listened_discord,
                         # or it's not from Twitch.
-                        if (not lower_name in server_valid_keys) and (listened_discord or not (lower_name in global_live_infos and global_live_infos[lower_name].from_twitch_api)):
+                        if (not lower_name in server_valid_keys) and (listened_discord or ((not server_live_infos[lower_name].has_streamer_role) and (not (lower_name in global_live_infos and global_live_infos[lower_name].from_twitch_api)))):
                             server_live_infos.pop(lower_name, None)
 
             #region Twitch profile image avatars
