@@ -584,6 +584,8 @@ async def ensure_message(g, name):
     if not name in global_live_infos:
         return
     global_info = global_live_infos[name]
+    if not name in server_live_infos:
+        return
     server_info = server_live_infos[name]
     plain_game = plain(global_info.game_name)
     text = "**" + plain(server_info.display_name) + "** is live! Playing " + plain_game
