@@ -581,6 +581,8 @@ async def ensure_message(g, name):
     server_channel_msgs = server_channel_msgss[g]
     # -----------------------------------------------------
     cap_name = recover_case(name, cap_l)
+    if not name in global_live_infos:
+        return
     global_info = global_live_infos[name]
     server_info = server_live_infos[name]
     plain_game = plain(global_info.game_name)
