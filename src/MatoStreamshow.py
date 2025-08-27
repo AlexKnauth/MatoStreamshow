@@ -491,9 +491,9 @@ class MatoStreamshow(discord.Client):
             for a in m.activities:
                 if isinstance(a, discord.Streaming) and a.platform == "Twitch":
                     if (not filtered) or len(cats) == 0 or a.game in cats:
-                        is_live = True
                         if not a.twitch_name:
                             continue
+                        is_live = True
                         lower_name = a.twitch_name.casefold()
                         thumb = None
                         profile_image = None
