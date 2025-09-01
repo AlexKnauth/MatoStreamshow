@@ -317,28 +317,8 @@ class MatoStreamshow(discord.Client):
 
             #region Twitch profile image avatars
 
-            avatar_unknowns = set()
-            for g in save.get_guild_ids():
-                d = save.get_guild_data(g)
-                dc_id = d["channel_id"]
-                if not (dc_id and dc_id != 0):
-                    continue
-                if not g in server_live_infoss:
-                    server_live_infoss[g] = {}
-                server_live_infos = server_live_infoss[g]
-                avatar_unknowns.update((u for u, i in server_live_infos.items() if i.display_avatar == None))
-            try:
-                if api:
-                    for batch in itertools.batched(avatar_unknowns, 100):
-                        users = api.get_users(logins=list(batch))
-                        async for user in users:
-                            lower_name = user.login.casefold()
-                            global_info = global_live_infos[lower_name]
-                            global_live_infos[lower_name] = global_info._replace(profile_image_url=user.profile_image_url)
-            except twitchAPI.type.TwitchBackendException as e:
+            if not await ensure_profile_image_urls():
                 hadTwitchBackendException = True
-                print("Twitch API Server Error in TwitchListen", flush=True)
-                traceback.print_exception(e)
 
             #endregion Twitch profile image avatars
 
@@ -528,6 +508,33 @@ class MatoStreamshow(discord.Client):
             msg = server_channel_msgs.pop(lower_name)
             if msg:
                 await msg.delete()
+
+async def ensure_profile_image_urls() -> bool:
+    global global_live_infos
+    global server_live_infoss
+    avatar_unknowns = set()
+    for g in save.get_guild_ids():
+        d = save.get_guild_data(g)
+        dc_id = d["channel_id"]
+        if not (dc_id and dc_id != 0):
+            continue
+        if not g in server_live_infoss:
+            server_live_infoss[g] = {}
+        server_live_infos = server_live_infoss[g]
+        avatar_unknowns.update((u for u, i in server_live_infos.items() if i.display_avatar == None))
+    try:
+        if api:
+            for batch in itertools.batched(avatar_unknowns, 100):
+                users = api.get_users(logins=list(batch))
+                async for user in users:
+                    lower_name = user.login.casefold()
+                    global_info = global_live_infos[lower_name]
+                    global_live_infos[lower_name] = global_info._replace(profile_image_url=user.profile_image_url)
+        return True
+    except twitchAPI.type.TwitchBackendException as e:
+        print("Twitch API Server Error in TwitchListen", flush=True)
+        traceback.print_exception(e)
+        return False
 
 async def ensure_game_images() -> bool:
     global global_live_infos
