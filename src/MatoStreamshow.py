@@ -236,14 +236,7 @@ class MatoStreamshow(discord.Client):
 
             #endregion Discord activity presence and roles
 
-            lower_set_all: set[str] = set()
-            for g in save.get_guild_ids():
-                d = save.get_guild_data(g)
-                dc_id = d["channel_id"]
-                if not (dc_id and dc_id != 0):
-                    continue
-                cap_l = d["twitch_streamer_list"]
-                lower_set_all.update((u.casefold() for u in cap_l))
+            lower_set_all: set[str] = save.get_lower_set_all()
 
             #region Twitch streams
 

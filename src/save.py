@@ -49,3 +49,14 @@ else:
             with open(JSON_PATH + ".bak") as f2:
                 data = json.load(f2)
     save()
+
+def get_lower_set_all() -> set[str]:
+    lower_set_all: set[str] = set()
+    for g in get_guild_ids():
+        d = get_guild_data(g)
+        dc_id = d["channel_id"]
+        if not (dc_id and dc_id != 0):
+            continue
+        cap_l = d["twitch_streamer_list"]
+        lower_set_all.update((u.casefold() for u in cap_l))
+    return lower_set_all
