@@ -342,31 +342,8 @@ class MatoStreamshow(discord.Client):
 
             #endregion Twitch profile image avatars
 
-            #region Twitch game image box art
-
-            game_image_unknowns = set()
-            for global_info in global_live_infos.values():
-                if global_info.game_name in global_game_images:
-                    game_image_unknowns.discard(global_info.game_name)
-                elif global_info.game_name in game_image_unknowns:
-                    continue
-                elif global_info.game_image_url:
-                    global_game_images[global_info.game_name] = global_info.game_image_url
-                    game_image_unknowns.discard(global_info.game_name)
-                else:
-                    game_image_unknowns.add(global_info.game_name)
-            try:
-                if api:
-                    for batch in itertools.batched(game_image_unknowns, 100):
-                        games = api.get_games(names=list(batch))
-                        async for game in games:
-                            global_game_images[game.name] = game.box_art_url.replace("{width}", "60").replace("{height}", "80")
-            except twitchAPI.type.TwitchBackendException as e:
+            if not await ensure_game_images():
                 hadTwitchBackendException = True
-                print("Twitch API Server Error in TwitchListen", flush=True)
-                traceback.print_exception(e)
-
-            #endregion Twitch game image box art
 
             #region Discord messages
 
@@ -551,6 +528,32 @@ class MatoStreamshow(discord.Client):
             msg = server_channel_msgs.pop(lower_name)
             if msg:
                 await msg.delete()
+
+async def ensure_game_images() -> bool:
+    global global_live_infos
+    global global_game_images
+    game_image_unknowns = set()
+    for global_info in global_live_infos.values():
+        if global_info.game_name in global_game_images:
+            game_image_unknowns.discard(global_info.game_name)
+        elif global_info.game_name in game_image_unknowns:
+            continue
+        elif global_info.game_image_url:
+            global_game_images[global_info.game_name] = global_info.game_image_url
+            game_image_unknowns.discard(global_info.game_name)
+        else:
+            game_image_unknowns.add(global_info.game_name)
+    try:
+        if api:
+            for batch in itertools.batched(game_image_unknowns, 100):
+                games = api.get_games(names=list(batch))
+                async for game in games:
+                    global_game_images[game.name] = game.box_art_url.replace("{width}", "60").replace("{height}", "80")
+        return True
+    except twitchAPI.type.TwitchBackendException as e:
+        print("Twitch API Server Error in ensure_game_images", flush=True)
+        traceback.print_exception(e)
+        return False
 
 async def ensure_message(g, name):
     global thumbnail_url_template
