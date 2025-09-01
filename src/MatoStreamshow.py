@@ -297,14 +297,17 @@ class MatoStreamshow(discord.Client):
                     lower_name = cap_name.casefold()
                     if lower_name in global_valid_keys:
                         stream = global_live_infos[lower_name]
-                        if (not lower_name in server_valid_keys) and (len(cats) == 0 or stream.game_name in cats):
-                            if not lower_name in server_live_infos:
-                                server_live_infos[lower_name] = ServerLiveInfo(
-                                    display_name=cap_name,
-                                    display_avatar=None,
-                                    has_streamer_role=False,
-                                )
-                            server_valid_keys.add(lower_name)
+                        if not lower_name in server_valid_keys:
+                            if len(cats) == 0 or stream.game_name in cats:
+                                if not lower_name in server_live_infos:
+                                    server_live_infos[lower_name] = ServerLiveInfo(
+                                        display_name=cap_name,
+                                        display_avatar=None,
+                                        has_streamer_role=False,
+                                    )
+                                server_valid_keys.add(lower_name)
+                            elif (lower_name in server_live_infos) and (not server_live_infos[lower_name].has_streamer_role):
+                                server_live_infos.pop(lower_name, None)
                 if not hadTwitchBackendException:
                     for lower_name in set(server_live_infos.keys()):
                         # This condition is here to avoid deleting
