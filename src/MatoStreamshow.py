@@ -106,7 +106,7 @@ class MatoStreamshow(discord.Client):
         super().__init__(intents=intents)
         self.tree = app_commands.CommandTree(self)
         self.countdown = 0
-        self.countreset = 60
+        self.countreset = 10
 
     async def setup_hook(self):
         await self.tree.sync()
@@ -486,6 +486,7 @@ class MatoStreamshow(discord.Client):
                     traceback.print_exception(e)
             await ensure_message(g, lower_name)
         elif lower_name in global_live_infos and not global_live_infos[lower_name].from_twitch_api:
+            print("on_presence_update: not is_live, in, not from_twitch_api")
             if dlr_id and dlr_id != 0:
                 try:
                     dlr = m.get_role(dlr_id)
@@ -510,7 +511,10 @@ class MatoStreamshow(discord.Client):
             server_channel_msgs = server_channel_msgss[g]
             msg = server_channel_msgs.pop(lower_name)
             if msg:
+                print("on_presence_update: msg delete")
                 await msg.delete()
+            else:
+                print("on_presence_update: not msg")
 
 async def ensure_profile_image_urls() -> bool:
     global global_live_infos
