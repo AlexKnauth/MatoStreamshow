@@ -546,9 +546,11 @@ async def ensure_profile_image_urls() -> bool:
 async def ensure_game_images() -> bool:
     global global_live_infos
     global global_game_images
-    game_image_unknowns = set()
+    game_image_unknowns: set[str] = set()
     for global_info in global_live_infos.values():
-        if global_info.game_name in global_game_images:
+        if not isinstance(global_info.game_name, str):
+            continue
+        elif global_info.game_name in global_game_images:
             game_image_unknowns.discard(global_info.game_name)
         elif global_info.game_name in game_image_unknowns:
             continue
@@ -597,8 +599,8 @@ async def ensure_message(g, name):
     if not name in server_live_infos:
         return
     server_info = server_live_infos[name]
-    plain_game = plain(global_info.game_name)
-    text = "**" + plain(server_info.display_name) + "** is live! Playing " + plain_game
+    plain_game = plain(global_info.game_name) if global_info.game_name else ""
+    text = "**" + plain(server_info.display_name) + "** is live!" + ((" Playing " + plain_game) if global_info.game_name else "")
     title = plain(global_info.title)
     thumb = global_info.thumbnail_url or guess_thumbnail_url(name, thumbnail_url_template)
     icon = server_info.display_avatar or global_info.profile_image_url
